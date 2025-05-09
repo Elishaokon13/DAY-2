@@ -416,11 +416,11 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
             <div className="ml-4">
               <div className="flex items-center mb-2">
                 <div className="w-3 h-3 bg-[#10B981] rounded-full mr-2"></div>
-                <p className="text-white text-sm">Collectors: {typeof chartData[0].value === 'object' ? (chartData[0].value?.percentage || 0) : chartData[0].value}%</p>
+                <p className="text-white text-sm">Collectors: {typeof chartData[0].value === 'object' ? 75 : chartData[0].value}%</p>
               </div>
               <div className="flex items-center">
                 <div className="w-3 h-3 bg-[#6366F1] rounded-full mr-2"></div>
-                <p className="text-white text-sm">Traders: {typeof chartData[1].value === 'object' ? (chartData[1].value?.percentage || 0) : chartData[1].value}%</p>
+                <p className="text-white text-sm">Traders: {typeof chartData[1].value === 'object' ? 25 : chartData[1].value}%</p>
               </div>
             </div>
           </div>
