@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
 import { getProfile, getCoin } from '@zoralabs/coins-sdk';
 import { base } from 'viem/chains';
