@@ -33,6 +33,7 @@ export default function BalancesTestPage() {
   const [error, setError] = useState<string | null>(null);
   const [fetchAll, setFetchAll] = useState<boolean>(false);
   const [period, setPeriod] = useState<string>('30');
+  const [showDiagnostics, setShowDiagnostics] = useState<boolean>(false);
   
   const fetchBalances = async () => {
     if (!identifier) return;
@@ -162,6 +163,10 @@ export default function BalancesTestPage() {
     }
   };
 
+  const toggleDiagnostics = () => {
+    setShowDiagnostics(!showDiagnostics);
+  };
+
   // Format currency for display
   const formatBalance = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -226,17 +231,32 @@ export default function BalancesTestPage() {
             </Button>
           </div>
           
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="fetchAll"
-              checked={fetchAll}
-              onChange={(e) => setFetchAll(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-700 bg-[#13151F] text-lime-500"
-            />
-            <label htmlFor="fetchAll" className="text-sm text-gray-300">
-              Fetch all pages (may take longer)
-            </label>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="fetchAll"
+                checked={fetchAll}
+                onChange={(e) => setFetchAll(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-700 bg-[#13151F] text-lime-500"
+              />
+              <label htmlFor="fetchAll" className="text-sm text-gray-300">
+                Fetch all pages (may take longer)
+              </label>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="showDiagnostics"
+                checked={showDiagnostics}
+                onChange={toggleDiagnostics}
+                className="h-4 w-4 rounded border-gray-700 bg-[#13151F] text-lime-500"
+              />
+              <label htmlFor="showDiagnostics" className="text-sm text-gray-300">
+                Show diagnostics
+              </label>
+            </div>
           </div>
         </form>
         
@@ -304,6 +324,68 @@ export default function BalancesTestPage() {
               </div>
             )}
           </Card>
+          
+          {/* Diagnostics */}
+          {showDiagnostics && (
+            <Card className="p-6 bg-[#1a1e2e] border border-yellow-700 mb-6">
+              <h2 className="text-xl font-mono text-yellow-500 mb-4">Diagnostics</h2>
+              
+              <div className="bg-[#13151F] p-4 rounded-lg mb-4">
+                <p className="text-gray-400 text-xs mb-2 font-mono">BALANCES API COUNTS</p>
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <p className="text-gray-400 text-xs">Total Balances:</p>
+                    <p className="text-white">{results.balances.total}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-xs">Created (API):</p>
+                    <p className="text-white">{results.balances.created.count}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-xs">Collected (API):</p>
+                    <p className="text-white">{results.balances.collected.count}</p>
+                  </div>
+                </div>
+                
+                <details className="mt-2">
+                  <summary className="text-lime-400 cursor-pointer text-sm">Show all balance data</summary>
+                  <pre className="text-xs text-gray-300 mt-2 overflow-x-auto">
+                    {JSON.stringify(results.balances.all.map(b => ({
+                      name: b.coin.name,
+                      creatorAddress: b.coin.creatorAddress,
+                      isCreator: b.isCreator
+                    })), null, 2)}
+                  </pre>
+                </details>
+              </div>
+              
+              {earningsData && (
+                <div className="bg-[#13151F] p-4 rounded-lg">
+                  <p className="text-gray-400 text-xs mb-2 font-mono">CREATOR EARNINGS API</p>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <p className="text-gray-400 text-xs">Created Coins Count:</p>
+                      <p className="text-white">{earningsData.createdCoins?.length || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-xs">Is Mock Data:</p>
+                      <p className="text-white">{earningsData._isMockData ? 'Yes' : 'No'}</p>
+                    </div>
+                  </div>
+                  
+                  <details className="mt-2">
+                    <summary className="text-lime-400 cursor-pointer text-sm">Show earnings coin data</summary>
+                    <pre className="text-xs text-gray-300 mt-2 overflow-x-auto">
+                      {JSON.stringify(earningsData.createdCoins?.map(c => ({
+                        name: c.name,
+                        address: c.address,
+                      })) || [], null, 2)}
+                    </pre>
+                  </details>
+                </div>
+              )}
+            </Card>
+          )}
           
           {/* Creator Earnings Summary */}
           {earningsData ? (
@@ -532,6 +614,19 @@ export default function BalancesTestPage() {
           {results.balances.created.count > 0 && (
             <Card className="p-6 bg-[#1a1e2e] border border-gray-700">
               <h2 className="text-xl font-mono text-lime-500 mb-4">Created Coins</h2>
+              
+              {showDiagnostics && (
+                <div className="bg-[#13151F] p-3 rounded-lg mb-4 text-xs">
+                  <p className="text-yellow-500">Diagnostic Note:</p>
+                  <p className="text-gray-300 mb-2">
+                    The Zora API may not consistently identify creator coins. We're using the creator address from the API to identify coins created by this user.
+                  </p>
+                  <p className="text-gray-300">
+                    Wallet: {results.profile.publicWallet}
+                  </p>
+                </div>
+              )}
+              
               <div className="space-y-4">
                 {results.balances.created.coins.map((balance, index) => (
                   <div key={index} className="bg-[#13151F] p-4 rounded-lg">
@@ -556,6 +651,9 @@ export default function BalancesTestPage() {
                       <div>
                         <h3 className="text-lime-500 font-bold">{balance.coin.name || 'Unnamed Coin'}</h3>
                         <p className="text-gray-400 text-sm">{balance.coin.symbol}</p>
+                        {showDiagnostics && (
+                          <p className="text-xs text-gray-500 mt-1">Creator: {balance.coin.creatorAddress?.slice(0, 6)}...{balance.coin.creatorAddress?.slice(-4)}</p>
+                        )}
                       </div>
                     </div>
                     
@@ -603,6 +701,9 @@ export default function BalancesTestPage() {
                       <div>
                         <h3 className="text-white font-bold">{balance.coin.name || 'Unnamed Coin'}</h3>
                         <p className="text-gray-400 text-sm">{balance.coin.symbol}</p>
+                        {showDiagnostics && balance.coin.creatorAddress && (
+                          <p className="text-xs text-gray-500 mt-1">Creator: {balance.coin.creatorAddress?.slice(0, 6)}...{balance.coin.creatorAddress?.slice(-4)}</p>
+                        )}
                       </div>
                     </div>
                     
