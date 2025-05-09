@@ -77,17 +77,17 @@ export function CreatorProfile({ handle }: CreatorProfileProps) {
       <div className="flex flex-col md:flex-row md:items-start gap-6">
         <div className="flex items-start space-x-4">
           {profileData.profileImage ? (
-            <div className="h-20 w-20 rounded-full overflow-hidden relative border-2 border-lime-500/30">
+            <div className="h-20 w-20 rounded-full overflow-hidden relative border-2 border-lime-500/30 shadow-lg shadow-lime-500/10 flex-shrink-0">
               <Image 
                 src={profileData.profileImage} 
                 alt={profileData.displayName} 
                 width={80} 
                 height={80}
-                className="object-cover"
+                className="object-cover rounded-full"
               />
             </div>
           ) : (
-            <div className="h-20 w-20 rounded-full bg-lime-900/20 flex items-center justify-center border-2 border-lime-500/30">
+            <div className="h-20 w-20 rounded-full bg-lime-900/20 flex items-center justify-center border-2 border-lime-500/30 shadow-lg shadow-lime-500/10 flex-shrink-0">
               <span className="text-lime-500 text-2xl font-bold">
                 {profileData.displayName.charAt(0).toUpperCase()}
               </span>
