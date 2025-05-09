@@ -57,6 +57,7 @@ export async function GET(req: NextRequest) {
     };
     
     console.log(`Found profile: ${profileData.displayName || profileData.handle}`);
+    console.log(`User wallet address: ${profileData.publicWallet}`);
     
     let allBalances: any[] = [];
     let cursor = after;
@@ -84,6 +85,12 @@ export async function GET(req: NextRequest) {
           // Use case-insensitive comparison for creator address
           const creatorAddress = nodeData.coin?.creatorAddress?.toLowerCase();
           const userWalletAddress = profile.publicWallet?.walletAddress?.toLowerCase();
+          
+          // Debug both addresses
+          if (nodeData.coin?.creatorAddress) {
+            console.log(`Coin: ${nodeData.coin?.name}, Creator: ${nodeData.coin?.creatorAddress}, User: ${profile.publicWallet?.walletAddress}`);
+          }
+          
           const isCreator = creatorAddress && userWalletAddress && creatorAddress === userWalletAddress;
           
           return {
@@ -128,27 +135,33 @@ export async function GET(req: NextRequest) {
       
       // Process each balance
       allBalances = edges.map(edge => {
-        const nodeData = edge.node;
-        // Use case-insensitive comparison for creator address
-        const creatorAddress = nodeData.coin?.creatorAddress?.toLowerCase();
-        const userWalletAddress = profile.publicWallet?.walletAddress?.toLowerCase();
-        const isCreator = creatorAddress && userWalletAddress && creatorAddress === userWalletAddress;
-        
-        return {
-          id: nodeData.id,
-          coin: {
-            address: nodeData.coin?.address,
-            name: nodeData.coin?.name,
-            symbol: nodeData.coin?.symbol,
-            totalSupply: nodeData.coin?.totalSupply,
-            uniqueHolders: nodeData.coin?.uniqueHolders,
-            creatorAddress: nodeData.coin?.creatorAddress || null,
-            image: nodeData.coin?.mediaContent?.previewImage?.medium || null
-          },
-          balance: nodeData.balance,
-          formattedBalance: parseFloat(nodeData.balance) / 1e18,
-          isCreator: isCreator
-        };
+          const nodeData = edge.node;
+          // Use case-insensitive comparison for creator address
+          const creatorAddress = nodeData.coin?.creatorAddress?.toLowerCase();
+          const userWalletAddress = profile.publicWallet?.walletAddress?.toLowerCase();
+          
+          // Debug both addresses
+          if (nodeData.coin?.creatorAddress) {
+            console.log(`Coin: ${nodeData.coin?.name}, Creator: ${nodeData.coin?.creatorAddress}, User: ${profile.publicWallet?.walletAddress}`);
+          }
+          
+          const isCreator = creatorAddress && userWalletAddress && creatorAddress === userWalletAddress;
+          
+          return {
+            id: nodeData.id,
+            coin: {
+              address: nodeData.coin?.address,
+              name: nodeData.coin?.name,
+              symbol: nodeData.coin?.symbol,
+              totalSupply: nodeData.coin?.totalSupply,
+              uniqueHolders: nodeData.coin?.uniqueHolders,
+              creatorAddress: nodeData.coin?.creatorAddress || null,
+              image: nodeData.coin?.mediaContent?.previewImage?.medium || null
+            },
+            balance: nodeData.balance,
+            formattedBalance: parseFloat(nodeData.balance) / 1e18,
+            isCreator: isCreator
+          };
       });
       
       cursor = balancesRes.data?.profile?.coinBalances?.pageInfo?.endCursor;
@@ -158,6 +171,14 @@ export async function GET(req: NextRequest) {
     // Categorize balances into created and collected
     const createdCoins = allBalances.filter(balance => balance.isCreator);
     const collectedCoins = allBalances.filter(balance => !balance.isCreator);
+    
+    console.log(`Created coins count: ${createdCoins.length}`);
+    console.log(`Collected coins count: ${collectedCoins.length}`);
+    
+    // Print created coin names if any
+    if (createdCoins.length > 0) {
+      console.log('Created coins: ' + createdCoins.map(c => c.coin?.name).join(', '));
+    }
     
     // Sort by balance amount (highest first)
     createdCoins.sort((a, b) => b.formattedBalance - a.formattedBalance);
