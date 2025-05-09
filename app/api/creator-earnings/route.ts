@@ -83,6 +83,8 @@ export async function GET(req: NextRequest) {
       const mockCoins = getCreatorMockCoins();
       const totalEarnings = mockCoins.reduce((sum, coin) => sum + (coin.estimatedEarnings || 0), 0);
       const totalVolume = mockCoins.reduce((sum, coin) => sum + parseFloat(coin.totalVolume || '0'), 0);
+      const postsCount = mockCoins.length;
+      const averageEarningsPerPost = postsCount > 0 ? totalEarnings / postsCount : 0;
       
       return NextResponse.json({
         profileHandle: cleanHandle,
@@ -92,8 +94,8 @@ export async function GET(req: NextRequest) {
         metrics: {
           totalEarnings,
           totalVolume,
-          posts: mockCoins.length,
-          avgEarningsPerPost: totalEarnings / mockCoins.length,
+          posts: postsCount,
+          averageEarningsPerPost,
         },
         createdCoins: mockCoins.map(coin => ({
           address: coin.address,
@@ -121,6 +123,8 @@ export async function GET(req: NextRequest) {
       const mockCoins = getCreatorMockCoins();
       const totalEarnings = mockCoins.reduce((sum, coin) => sum + (coin.estimatedEarnings || 0), 0);
       const totalVolume = mockCoins.reduce((sum, coin) => sum + parseFloat(coin.totalVolume || '0'), 0);
+      const postsCount = mockCoins.length;
+      const averageEarningsPerPost = postsCount > 0 ? totalEarnings / postsCount : 0;
       
       return NextResponse.json({
         profileHandle: profileData?.profile?.handle,
@@ -130,8 +134,8 @@ export async function GET(req: NextRequest) {
         metrics: {
           totalEarnings,
           totalVolume,
-          posts: mockCoins.length,
-          avgEarningsPerPost: totalEarnings / mockCoins.length,
+          posts: postsCount,
+          averageEarningsPerPost,
         },
         createdCoins: mockCoins,
       }, { status: 200 });
@@ -215,7 +219,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Calculate averages
-    const avgEarningsPerPost = posts > 0 ? totalEarnings / posts : 0;
+    const averageEarningsPerPost = posts > 0 ? totalEarnings / posts : 0;
     
     // Create a structured response
     const earningsData = {
@@ -227,7 +231,7 @@ export async function GET(req: NextRequest) {
         totalEarnings,
         totalVolume,
         posts,
-        avgEarningsPerPost,
+        averageEarningsPerPost,
       },
       createdCoins: creatorCoins.map(coin => ({
         address: coin.address,
@@ -249,10 +253,12 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Error fetching creator earnings:', error);
     
-    // Return mock data even on error for demo purposes
+    // Return mock data on error for demo purposes
     const mockCoins = getCreatorMockCoins();
     const totalEarnings = mockCoins.reduce((sum, coin) => sum + (coin.estimatedEarnings || 0), 0);
     const totalVolume = mockCoins.reduce((sum, coin) => sum + parseFloat(coin.totalVolume || '0'), 0);
+    const postsCount = mockCoins.length;
+    const averageEarningsPerPost = postsCount > 0 ? totalEarnings / postsCount : 0;
     
     return NextResponse.json({
       profileHandle: cleanHandle,
@@ -262,8 +268,8 @@ export async function GET(req: NextRequest) {
       metrics: {
         totalEarnings,
         totalVolume,
-        posts: mockCoins.length,
-        avgEarningsPerPost: totalEarnings / mockCoins.length,
+        posts: postsCount,
+        averageEarningsPerPost,
       },
       createdCoins: mockCoins.map(coin => ({
         address: coin.address,
@@ -287,7 +293,7 @@ export type CreatorEarningsResponse = {
     totalEarnings: number;
     totalVolume: number;
     posts: number;
-    avgEarningsPerPost: number;
+    averageEarningsPerPost: number;
   };
   createdCoins: Array<{
     address: string;
