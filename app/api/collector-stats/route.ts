@@ -10,8 +10,16 @@ const COLLECTOR_HOLD_DAYS = 7;
 // Mock data for collector stats
 const getMockCollectorStats = (coinAddress) => {
   return {
-    traders: 8,
-    collectors: 12,
+    collectors: {
+      count: 12,
+      percentage: 60,
+      volume: 8500.75
+    },
+    traders: {
+      count: 8,
+      percentage: 40,
+      volume: 5120.25
+    },
     totalUsers: 20,
     price: 10.25,
     name: "Sample Coin",
@@ -58,11 +66,11 @@ export async function GET(req: NextRequest) {
     
     // Generate a realistic split between collectors and traders
     // This is an estimation; in a real app we would analyze transaction data
-    const estimatedCollectorPercentage = 0.65; // 65% of holders are collectors (hold long-term)
-    const estimatedTraderPercentage = 0.35; // 35% are traders (buy/sell frequently)
+    const estimatedCollectorPercentage = 65; // 65% of holders are collectors (hold long-term)
+    const estimatedTraderPercentage = 35; // 35% are traders (buy/sell frequently)
     
-    const collectors = Math.round(uniqueHolders * estimatedCollectorPercentage);
-    const traders = Math.round(uniqueHolders * estimatedTraderPercentage);
+    const collectors = Math.round(uniqueHolders * (estimatedCollectorPercentage / 100));
+    const traders = Math.round(uniqueHolders * (estimatedTraderPercentage / 100));
     
     // For volume, we can use actual data from the API
     const totalVolume = parseFloat(coin.totalVolume || '0');
@@ -72,10 +80,18 @@ export async function GET(req: NextRequest) {
     const collectorVolume = totalVolume * 0.3; // 30% of volume from collectors (first purchase)
     const traderVolume = totalVolume * 0.7; // 70% of volume from active traders
     
-    // Format the response in the new simpler format
+    // Format the response in the format expected by the ShareableAnalyticsCard
     const response = {
-      traders,
-      collectors,
+      collectors: {
+        count: collectors,
+        percentage: estimatedCollectorPercentage,
+        volume: collectorVolume
+      },
+      traders: {
+        count: traders,
+        percentage: estimatedTraderPercentage,
+        volume: traderVolume
+      },
       totalUsers: uniqueHolders,
       price: totalVolume / uniqueHolders, // Estimate average price per user
       name: coin.name,
@@ -96,19 +112,18 @@ export async function GET(req: NextRequest) {
 }
 
 export type CollectorStatsResponse = {
-  address: string;
+  collectors: {
+    count: number;
+    percentage: number;
+    volume: number;
+  };
+  traders: {
+    count: number;
+    percentage: number;
+    volume: number;
+  };
+  totalUsers: number;
+  price: number;
   name: string;
   symbol: string;
-  stats: {
-    uniqueHolders: number;
-    collectors: number;
-    traders: number;
-    collectorPercentage: number;
-    traderPercentage: number;
-    totalVolume: number;
-    volume24h: number;
-    collectorVolume: number;
-    traderVolume: number;
-  };
-  note: string;
 } 
