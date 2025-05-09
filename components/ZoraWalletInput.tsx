@@ -1,12 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Collage } from '@/components/Collage/Collage'
 import { validateHandle } from '@/lib/validateWallet'
 import { ZoraTokenResponse, ZoraToken } from '@/app/api/zora-tokens/route'
 import { FooterButtons } from '@/components/FooterButtons'
+import { Button } from './ui/button'
+import { Icon } from './Icon'
 
-export function ZoraWalletInput({ displayName }: { displayName: string }  ) {
+export interface ZoraWalletInputProps {
+  displayName: string;
+  onHandleChange?: (handle: string) => void;
+  onViewAnalytics?: (handle: string) => void;
+}
+
+export function ZoraWalletInput({ displayName, onHandleChange, onViewAnalytics }: ZoraWalletInputProps) {
   const [handle, setHandle] = useState('')
   const [tokens, setTokens] = useState<ZoraToken[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -19,6 +27,13 @@ export function ZoraWalletInput({ displayName }: { displayName: string }  ) {
   } | null>(null)
 
   const [selectedToken, setSelectedToken] = useState<ZoraToken | null>(null)
+
+  // Notify parent when handle changes
+  useEffect(() => {
+    if (onHandleChange && validateHandle(handle)) {
+      onHandleChange(handle);
+    }
+  }, [handle, onHandleChange]);
 
   const handleSubmit = async () => {
     const trimmedHandle = handle.trim()
@@ -77,24 +92,19 @@ export function ZoraWalletInput({ displayName }: { displayName: string }  ) {
   }
 
   return (
-    <div className="fixed inset-0  flex items-center justify-center bg-black">
-      <div className="w-full max-w-md relative">
-        <div className={`border ${isFocused ? 'border-lime-700/70' : 'border-lime-700/40'} bg-black p-8 relative mx-4 transition-colors duration-300`}>
-          <h2 className="text-3xl font-bold text-white mb-8 text-center font-mono">
-            {displayName ? (
-              <>
-                <span className="block mb-2">Hey</span>
-                <span className="block text-lime-400 mb-2">{displayName}</span>
-                <span className="block">ENTER YOUR ZORA HANDLE TO START</span>
-              </>
-            ) : (
-              <span className="break-words">ENTER YOUR ZORA HANDLE TO START</span>
-            )}
-          </h2>
-          
-          <p className="text-gray-400 text-center mb-6 font-mono text-sm">
-            Enter your Zora handle to generate a collage of your top 5 tokens
-          </p>
+    <div className="flex flex-col items-center justify-center">
+      <div className="w-full max-w-md">
+        <div className="relative z-10 overflow-hidden rounded-xl bg-[rgba(0,0,0,0.5)] shadow-2xl backdrop-blur-xl">
+          {/* Header */}
+          <div className="relative p-8 text-center">
+            <h2 className="text-2xl font-mono text-gray-300 mb-2">
+              Zora Creator Analytics
+            </h2>
+            <p className="text-gray-400 text-sm mb-6 font-mono">
+              {displayName
+                ? `Welcome ${displayName}! Enter a Zora handle to explore creator earnings.`
+                : 'Enter a Zora handle to explore creator earnings.'}
+            </p>
 
           <div className="space-y-6">
             <div className={`relative bg-[#1a1e2e] overflow-hidden ${isFocused ? 'ring-1 ring-lime-700/30' : ''}`}>
@@ -116,13 +126,25 @@ export function ZoraWalletInput({ displayName }: { displayName: string }  ) {
 
             {error && <p className="text-red-500 text-sm text-center font-mono">{error}</p>}
 
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="w-full bg-black border border-gray-700 hover:border-lime-300 text-gray-500 py-5 font-mono tracking-wider transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed mt-8"
-            >
-              {loading ? 'CHECKING ZORA PROFILE...' : 'GENERATE MY COLLAGE'}
-            </button>
+            <div className="flex gap-4">
+              <button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="flex-1 bg-black border border-gray-700 hover:border-lime-300 text-gray-500 py-4 font-mono tracking-wider transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'CHECKING...' : 'SEARCH TOKENS'}
+              </button>
+              
+              {onViewAnalytics && validateHandle(handle) && (
+                <button
+                  onClick={() => onViewAnalytics(handle)}
+                  className="flex items-center justify-center bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400 py-4 px-4 font-mono tracking-wider transition-colors duration-300"
+                >
+                  <Icon name="barChart" size="sm" className="mr-2" />
+                  ANALYTICS
+                </button>
+              )}
+            </div>
           </div>
 
          
@@ -141,6 +163,16 @@ export function ZoraWalletInput({ displayName }: { displayName: string }  ) {
           </div>
         </div>
       </div>
+      
+      {/* Display token collage when tokens are loaded */}
+      {tokens.length > 0 && (
+        <div className="mt-8 w-full">
+          <h3 className="text-lg font-mono text-gray-300 mb-4 text-center">
+            {profileData?.displayName}'s Tokens
+          </h3>
+          <Collage tokens={tokens} profileData={profileData} />
+        </div>
+      )}
     </div>
   )
 }
