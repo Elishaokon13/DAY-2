@@ -14,31 +14,50 @@ Key features include:
 1. Accessing Zora's API to fetch creator earnings data
    - The existing codebase already integrates with Zora's API using the @zoralabs/coins-sdk
    - Current implementation fetches profile and token balances, but needs to be extended to fetch creator earnings data
-   - Need to identify appropriate SDK methods or GraphQL queries for creator earnings
+   - Research findings:
+     - Zora SDK provides several methods for querying coin and profile data
+     - For creator earnings, we can use `getProfile` and `getProfileBalances` from the coins-sdk
+     - For historical data on trades, we'll need to track the coin activity over time
+     - We can use the protocol rewards tracking for creator fees
+     - No direct "earnings analytics" endpoint exists, so we'll need to calculate metrics from transaction data
 
 2. Structuring and processing the data for different analytics metrics
    - Need to calculate total earnings across all tokens
    - Need to track earnings over time to calculate averages and trends
    - Need to classify users as collectors vs. traders based on transaction history
+   - Research findings:
+     - We can use the `getCoin` function to get details about each coin including total volume, price data
+     - Trading activity can be tracked through the transaction history
+     - We'll need to implement custom logic to classify users as traders or collectors based on their buy/sell behavior
 
 3. Building interactive and responsive charts for data visualization
    - Need to select and integrate a charting library compatible with Next.js
    - Design responsive chart layouts for mobile-first UI
    - Implement filters for different timeframes (daily, weekly, monthly)
+   - Research findings:
+     - Several chart libraries work well with Next.js: Chart.js, Recharts, or Visx
+     - For responsive design, we can leverage the existing MiniKit UI components
 
 4. Creating a user-friendly interface for viewing analytics
    - Extend the existing MiniKit UI components for analytics displays
    - Create dashboard layouts with cards for different metrics
    - Ensure accessibility and responsiveness
+   - Research findings:
+     - The existing codebase has a component called ZoraWalletInput.tsx that we can extend
+     - We can build on top of the current UI structure with additional views for analytics
+
 
 5. Implementing authentication for accessing personal creator data
    - Ensure that only the creator can access their earnings data
    - Leverage existing Farcaster authentication in MiniKit
+   - Research findings:
+     - MiniKit already provides authentication via Farcaster
+     - We can use the existing context.user data to verify the user's identity
 
 ## High-level Task Breakdown
 
 ### 1. Research and Setup
-- [ ] Task 1.1: Research Zora API endpoints for creator earnings data
+- [x] Task 1.1: Research Zora API endpoints for creator earnings data
   - Success Criteria: Document available endpoints and data structures for creator earnings
 - [ ] Task 1.2: Install necessary dependencies for data visualization
   - Success Criteria: Successfully install and import a chart library in the project
@@ -46,10 +65,20 @@ Key features include:
 ### 2. Backend API Development
 - [ ] Task 2.1: Create new API endpoint for fetching creator earnings
   - Success Criteria: /api/creator-earnings endpoint returns structured earnings data
+  - Implementation Details:
+    - Use getProfile, getProfileBalances, and getCoin functions from @zoralabs/coins-sdk
+    - Aggregate data across multiple coins for a creator
+    - Calculate total earnings from transaction history
 - [ ] Task 2.2: Create API endpoint for collector/trader stats
   - Success Criteria: /api/collector-stats endpoint returns user classification data
+  - Implementation Details:
+    - Track user transaction history for specific coins
+    - Classify users as collectors (hold for X time) or traders (frequent buy/sell)
 - [ ] Task 2.3: Create API endpoint for earnings over time
   - Success Criteria: /api/earnings-timeline endpoint returns time-series data
+  - Implementation Details:
+    - Use historical transaction data to create time-series datasets
+    - Group earnings by day, week, month for different timeframe views
 
 ### 3. Frontend Component Development
 - [ ] Task 3.1: Create EarningsSummary component for total/average metrics
@@ -74,11 +103,14 @@ Key features include:
   - Success Criteria: Dashboard loads and updates efficiently
 
 ## Project Status Board
-- [ ] Task 1.1: Research Zora API endpoints for creator earnings data
+- [x] Task 1.1: Research Zora API endpoints for creator earnings data
 - [ ] Task 1.2: Install necessary dependencies for data visualization
 
 ## Executor's Feedback or Assistance Requests
-[This section will be used by the Executor to communicate questions or issues]
+We need to decide on a charting library for visualization. Based on research, recommended options are:
+1. Chart.js (via react-chartjs-2) - Simple and widely used
+2. Recharts - React-specific with good performance
+3. Visx - By Airbnb, more customizable but steeper learning curve
 
 ## Lessons
 - Always include debug info in program output
