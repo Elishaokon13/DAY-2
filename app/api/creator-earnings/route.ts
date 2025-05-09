@@ -56,6 +56,7 @@ export async function GET(req: NextRequest) {
   const handle = req.nextUrl.searchParams.get('handle');
   const timeframe = req.nextUrl.searchParams.get('timeframe') || 'all'; // all, week, month
   const useMockData = req.nextUrl.searchParams.get('mock') === 'true';
+  const forceTruthData = req.nextUrl.searchParams.get('mock') === 'false';
 
   if (!handle) {
     return NextResponse.json({ error: 'Missing Zora handle' }, { status: 400 });
@@ -64,8 +65,11 @@ export async function GET(req: NextRequest) {
   // Clean up the handle input (remove @ if present)
   const cleanHandle = handle.trim().replace(/^@/, '');
 
-  // Always use mock data for development/demo purposes
-  const forceMockData = useMockData || false; // Allow real data
+  // Determine whether to use mock data
+  // - If mock=false is specified, never use mock data (return empty results instead)
+  // - If mock=true is specified, always use mock data
+  // - Otherwise, use mock data as fallback when real data is unavailable
+  const shouldUseMockData = useMockData || (!forceTruthData);
 
   try {
     console.log(`Fetching profile for ${cleanHandle}...`);
@@ -77,36 +81,52 @@ export async function GET(req: NextRequest) {
     const profileData = profileRes?.data;
     
     if (!profileData?.profile) {
-      console.log('Zora profile not found, using mock data');
+      console.log('Zora profile not found');
+      
+      if (forceTruthData) {
+        return NextResponse.json({ 
+          error: 'Profile not found',
+          _isMockData: false
+        }, { status: 404 });
+      }
       
       // Return mock data instead of error for demo purposes
-      const mockCoins = getCreatorMockCoins();
-      const totalEarnings = mockCoins.reduce((sum, coin) => sum + (coin.estimatedEarnings || 0), 0);
-      const totalVolume = mockCoins.reduce((sum, coin) => sum + parseFloat(coin.totalVolume || '0'), 0);
-      const postsCount = mockCoins.length;
-      const averageEarningsPerPost = postsCount > 0 ? totalEarnings / postsCount : 0;
-      
-      return NextResponse.json({
-        profileHandle: cleanHandle,
-        displayName: cleanHandle,
-        profileImage: null,
-        bio: "Creator on Zora 🎨",
-        metrics: {
-          totalEarnings,
-          totalVolume,
-          posts: postsCount,
-          averageEarningsPerPost,
-        },
-        createdCoins: mockCoins.map(coin => ({
-          address: coin.address,
-          name: coin.name,
-          symbol: coin.symbol,
-          totalVolume: coin.totalVolume,
-          volume24h: coin.volume24h,
-          uniqueHolders: coin.uniqueHolders,
-          estimatedEarnings: parseFloat(coin.totalVolume || '0') * 0.05,
-        })),
-      }, { status: 200 });
+      if (shouldUseMockData) {
+        console.log('Using mock data since profile not found');
+        const mockCoins = getCreatorMockCoins();
+        const totalEarnings = mockCoins.reduce((sum, coin) => sum + (coin.estimatedEarnings || 0), 0);
+        const totalVolume = mockCoins.reduce((sum, coin) => sum + parseFloat(coin.totalVolume || '0'), 0);
+        const postsCount = mockCoins.length;
+        const averageEarningsPerPost = postsCount > 0 ? totalEarnings / postsCount : 0;
+        
+        return NextResponse.json({
+          profileHandle: cleanHandle,
+          displayName: cleanHandle,
+          profileImage: null,
+          bio: "Creator on Zora 🎨",
+          _isMockData: true,
+          metrics: {
+            totalEarnings,
+            totalVolume,
+            posts: postsCount,
+            averageEarningsPerPost,
+          },
+          createdCoins: mockCoins.map(coin => ({
+            address: coin.address,
+            name: coin.name,
+            symbol: coin.symbol,
+            totalVolume: coin.totalVolume,
+            volume24h: coin.volume24h,
+            uniqueHolders: coin.uniqueHolders,
+            estimatedEarnings: parseFloat(coin.totalVolume || '0') * 0.05,
+          })),
+        }, { status: 200 });
+      } else {
+        return NextResponse.json({ 
+          error: 'Profile not found',
+          _isMockData: false 
+        }, { status: 404 });
+      }
     }
     
     const displayName =
@@ -118,36 +138,75 @@ export async function GET(req: NextRequest) {
     const userAddress = profileData?.profile?.publicWallet?.walletAddress;
     
     if (!userAddress) {
-      console.log('Could not determine creator address, using mock data');
-      // Return mock data instead of error
-      const mockCoins = getCreatorMockCoins();
-      const totalEarnings = mockCoins.reduce((sum, coin) => sum + (coin.estimatedEarnings || 0), 0);
-      const totalVolume = mockCoins.reduce((sum, coin) => sum + parseFloat(coin.totalVolume || '0'), 0);
-      const postsCount = mockCoins.length;
-      const averageEarningsPerPost = postsCount > 0 ? totalEarnings / postsCount : 0;
+      console.log('Could not determine creator address');
       
-      return NextResponse.json({
-        profileHandle: profileData?.profile?.handle,
-        displayName,
-        profileImage: profileData?.profile?.avatar?.medium || null,
-        bio: "Creator on Zora 🎨",
-        metrics: {
-          totalEarnings,
-          totalVolume,
-          posts: postsCount,
-          averageEarningsPerPost,
-        },
-        createdCoins: mockCoins,
-      }, { status: 200 });
+      if (forceTruthData) {
+        return NextResponse.json({ 
+          profileHandle: profileData?.profile?.handle,
+          displayName,
+          profileImage: profileData?.profile?.avatar?.medium || null,
+          bio: profileData?.profile?.bio || null,
+          _isMockData: false,
+          metrics: {
+            totalEarnings: 0,
+            totalVolume: 0,
+            posts: 0,
+            averageEarningsPerPost: 0,
+          },
+          createdCoins: []
+        }, { status: 200 });
+      }
+      
+      if (shouldUseMockData) {
+        console.log('Using mock data since wallet address not found');
+        // Return mock data instead of error
+        const mockCoins = getCreatorMockCoins();
+        const totalEarnings = mockCoins.reduce((sum, coin) => sum + (coin.estimatedEarnings || 0), 0);
+        const totalVolume = mockCoins.reduce((sum, coin) => sum + parseFloat(coin.totalVolume || '0'), 0);
+        const postsCount = mockCoins.length;
+        const averageEarningsPerPost = postsCount > 0 ? totalEarnings / postsCount : 0;
+        
+        return NextResponse.json({
+          profileHandle: profileData?.profile?.handle,
+          displayName,
+          profileImage: profileData?.profile?.avatar?.medium || null,
+          bio: profileData?.profile?.bio || "Creator on Zora 🎨",
+          _isMockData: true,
+          metrics: {
+            totalEarnings,
+            totalVolume,
+            posts: postsCount,
+            averageEarningsPerPost,
+          },
+          createdCoins: mockCoins,
+        }, { status: 200 });
+      } else {
+        return NextResponse.json({ 
+          profileHandle: profileData?.profile?.handle,
+          displayName,
+          profileImage: profileData?.profile?.avatar?.medium || null,
+          bio: profileData?.profile?.bio || null,
+          _isMockData: false,
+          metrics: {
+            totalEarnings: 0,
+            totalVolume: 0,
+            posts: 0,
+            averageEarningsPerPost: 0,
+          },
+          createdCoins: []
+        }, { status: 200 });
+      }
     }
 
     // Handle mock data or API issues with a fallback approach
     let creatorCoins = [];
+    let usedMockData = false;
 
-    if (forceMockData) {
-      // Use mock data if requested or if API fails
-      console.log("Using mock data for creator coins");
+    if (useMockData) {
+      // Use mock data if requested
+      console.log("Using mock data as requested");
       creatorCoins = getCreatorMockCoins();
+      usedMockData = true;
     } else {
       try {
         // Try to get balance data from API
@@ -185,21 +244,36 @@ export async function GET(req: NextRequest) {
           
           console.log(`Found ${creatorCoins.length} creator coins for ${cleanHandle}`);
           
-          // Use mock data if no creator coins were found
+          // Use mock data if no creator coins were found and mock data is not explicitly disabled
           if (creatorCoins.length === 0) {
-            console.log(`No creator coins found for ${cleanHandle}, using mock data`);
-            creatorCoins = getCreatorMockCoins();
+            if (forceTruthData) {
+              console.log(`No creator coins found for ${cleanHandle}, returning empty array`);
+            } else if (shouldUseMockData) {
+              console.log(`No creator coins found for ${cleanHandle}, using mock data`);
+              creatorCoins = getCreatorMockCoins();
+              usedMockData = true;
+            }
           }
         } else {
-          // Fallback to mock data if API response doesn't have the expected structure
-          console.log("API response doesn't contain coin balances, using mock data");
-          creatorCoins = getCreatorMockCoins();
+          // API response doesn't have the expected structure
+          if (forceTruthData) {
+            console.log("API response doesn't contain coin balances, returning empty array");
+          } else if (shouldUseMockData) {
+            console.log("API response doesn't contain coin balances, using mock data");
+            creatorCoins = getCreatorMockCoins();
+            usedMockData = true;
+          }
         }
       } catch (error) {
-        // Fallback to mock data if API call fails
+        // API call failed
         console.error("Error fetching balances:", error);
-        console.log("Using mock data due to API error");
-        creatorCoins = getCreatorMockCoins();
+        if (forceTruthData) {
+          console.log("API error, returning empty array as mock data is disabled");
+        } else if (shouldUseMockData) {
+          console.log("Using mock data due to API error");
+          creatorCoins = getCreatorMockCoins();
+          usedMockData = true;
+        }
       }
     }
 
@@ -227,6 +301,7 @@ export async function GET(req: NextRequest) {
       displayName,
       profileImage: profileData?.profile?.avatar?.medium || null,
       bio: profileData?.profile?.bio || "Creator on Zora",
+      _isMockData: usedMockData,
       metrics: {
         totalEarnings,
         totalVolume,
@@ -253,34 +328,52 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Error fetching creator earnings:', error);
     
-    // Return mock data on error for demo purposes
-    const mockCoins = getCreatorMockCoins();
-    const totalEarnings = mockCoins.reduce((sum, coin) => sum + (coin.estimatedEarnings || 0), 0);
-    const totalVolume = mockCoins.reduce((sum, coin) => sum + parseFloat(coin.totalVolume || '0'), 0);
-    const postsCount = mockCoins.length;
-    const averageEarningsPerPost = postsCount > 0 ? totalEarnings / postsCount : 0;
+    if (forceTruthData) {
+      return NextResponse.json({ 
+        error: 'Failed to fetch creator earnings',
+        details: error instanceof Error ? error.message : String(error),
+        _isMockData: false
+      }, { status: 500 });
+    }
     
-    return NextResponse.json({
-      profileHandle: cleanHandle,
-      displayName: cleanHandle,
-      profileImage: null,
-      bio: "Creator on Zora 🎨",
-      metrics: {
-        totalEarnings,
-        totalVolume,
-        posts: postsCount,
-        averageEarningsPerPost,
-      },
-      createdCoins: mockCoins.map(coin => ({
-        address: coin.address,
-        name: coin.name,
-        symbol: coin.symbol,
-        totalVolume: coin.totalVolume,
-        volume24h: coin.volume24h,
-        uniqueHolders: coin.uniqueHolders,
-        estimatedEarnings: parseFloat(coin.totalVolume || '0') * 0.05,
-      })),
-    }, { status: 200 });
+    // Return mock data on error for demo purposes
+    if (shouldUseMockData) {
+      console.log('Using mock data due to error');
+      const mockCoins = getCreatorMockCoins();
+      const totalEarnings = mockCoins.reduce((sum, coin) => sum + (coin.estimatedEarnings || 0), 0);
+      const totalVolume = mockCoins.reduce((sum, coin) => sum + parseFloat(coin.totalVolume || '0'), 0);
+      const postsCount = mockCoins.length;
+      const averageEarningsPerPost = postsCount > 0 ? totalEarnings / postsCount : 0;
+      
+      return NextResponse.json({
+        profileHandle: cleanHandle,
+        displayName: cleanHandle,
+        profileImage: null,
+        bio: "Creator on Zora 🎨",
+        _isMockData: true,
+        metrics: {
+          totalEarnings,
+          totalVolume,
+          posts: postsCount,
+          averageEarningsPerPost,
+        },
+        createdCoins: mockCoins.map(coin => ({
+          address: coin.address,
+          name: coin.name,
+          symbol: coin.symbol,
+          totalVolume: coin.totalVolume,
+          volume24h: coin.volume24h,
+          uniqueHolders: coin.uniqueHolders,
+          estimatedEarnings: parseFloat(coin.totalVolume || '0') * 0.05,
+        })),
+      }, { status: 200 });
+    } else {
+      return NextResponse.json({ 
+        error: 'Failed to fetch creator earnings',
+        details: error instanceof Error ? error.message : String(error),
+        _isMockData: false
+      }, { status: 500 });
+    }
   }
 }
 
@@ -289,6 +382,7 @@ export type CreatorEarningsResponse = {
   displayName: string;
   profileImage: string | null;
   bio: string | null;
+  _isMockData?: boolean;
   metrics: {
     totalEarnings: number;
     totalVolume: number;
