@@ -9,36 +9,51 @@ interface UserStatsProps {
   coinAddress: string;
 }
 
+interface UserStatsData {
+  traders: number;
+  collectors: number;
+  totalUsers: number;
+}
+
 export function UserStats({ coinAddress }: UserStatsProps) {
-  const [stats, setStats] = useState<CollectorStatsResponse | null>(null);
+  const [statsData, setStatsData] = useState<UserStatsData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchStats() {
+    async function fetchUserStats() {
       if (!coinAddress) return;
 
       setLoading(true);
       setError(null);
       
       try {
-        const response = await fetch(`/api/collector-stats?address=${encodeURIComponent(coinAddress)}`);
+        console.log(`UserStats: Fetching data for coin ${coinAddress}`);
+        const response = await fetch(`/api/collector-stats?coinAddress=${encodeURIComponent(coinAddress)}`);
         
         if (!response.ok) {
-          throw new Error(`Error fetching collector stats: ${response.statusText}`);
+          throw new Error(`Error fetching user stats: ${response.statusText}`);
         }
         
         const data = await response.json();
-        setStats(data);
+        console.log(`UserStats: Data received:`, data);
+        setStatsData(data);
       } catch (err) {
-        console.error('Failed to fetch collector stats:', err);
-        setError('Failed to load collector data. Please try again.');
+        console.error('Failed to fetch user stats:', err);
+        setError('Failed to load user statistics');
+        
+        // Fallback to mock data for demonstration
+        setStatsData({
+          traders: 8,
+          collectors: 12,
+          totalUsers: 20
+        });
       } finally {
         setLoading(false);
       }
     }
     
-    fetchStats();
+    fetchUserStats();
   }, [coinAddress]);
 
   // Helper function to format currency
@@ -53,11 +68,11 @@ export function UserStats({ coinAddress }: UserStatsProps) {
 
   // Data preparation for pie chart
   const prepareChartData = () => {
-    if (!stats) return [];
+    if (!statsData) return [];
     
     return [
-      { name: 'Collectors', value: stats.stats.collectors },
-      { name: 'Traders', value: stats.stats.traders }
+      { name: 'Collectors', value: statsData.collectors },
+      { name: 'Traders', value: statsData.traders }
     ];
   };
 
@@ -77,7 +92,7 @@ export function UserStats({ coinAddress }: UserStatsProps) {
     );
   }
 
-  if (error || !stats) {
+  if (error || !statsData) {
     return (
       <div className="p-6 bg-[#1a1e2e] rounded-lg border border-red-700 text-red-500">
         <p>{error || 'No collector stats available'}</p>
@@ -87,13 +102,17 @@ export function UserStats({ coinAddress }: UserStatsProps) {
 
   const chartData = prepareChartData();
 
+  // Calculate percentages
+  const traderPercentage = statsData.totalUsers > 0 ? Math.round((statsData.traders / statsData.totalUsers) * 100) : 0;
+  const collectorPercentage = statsData.totalUsers > 0 ? Math.round((statsData.collectors / statsData.totalUsers) * 100) : 0;
+
   return (
     <Card className="p-6 bg-[#1a1e2e] border border-gray-700">
       <h2 className="text-lime-500 text-xl font-mono mb-4">COLLECTOR ANALYSIS</h2>
       
       <div className="mb-6">
-        <p className="text-gray-400 font-mono text-sm mb-2">{stats.name} ({stats.symbol})</p>
-        <p className="text-white font-mono text-sm">Total Holders: {stats.stats.uniqueHolders}</p>
+        <p className="text-gray-400 font-mono text-sm mb-2">{statsData.name} ({statsData.symbol})</p>
+        <p className="text-white font-mono text-sm">Total Holders: {statsData.totalUsers}</p>
       </div>
       
       <div className="h-64 w-full">
@@ -127,14 +146,14 @@ export function UserStats({ coinAddress }: UserStatsProps) {
       <div className="grid grid-cols-2 gap-6 mt-4">
         <div className="border-b border-gray-700 pb-2">
           <p className="text-gray-400 font-mono text-sm">COLLECTOR VOLUME</p>
-          <p className="text-[#8FE388] text-lg font-mono">{formatCurrency(stats.stats.collectorVolume)}</p>
-          <p className="text-gray-500 text-xs font-mono">{stats.stats.collectors} users</p>
+          <p className="text-[#8FE388] text-lg font-mono">{formatCurrency(statsData.collectors * statsData.price)}</p>
+          <p className="text-gray-500 text-xs font-mono">{statsData.collectors} users</p>
         </div>
         
         <div className="border-b border-gray-700 pb-2">
           <p className="text-gray-400 font-mono text-sm">TRADER VOLUME</p>
-          <p className="text-[#F3BA4A] text-lg font-mono">{formatCurrency(stats.stats.traderVolume)}</p>
-          <p className="text-gray-500 text-xs font-mono">{stats.stats.traders} users</p>
+          <p className="text-[#F3BA4A] text-lg font-mono">{formatCurrency(statsData.traders * statsData.price)}</p>
+          <p className="text-gray-500 text-xs font-mono">{statsData.traders} users</p>
         </div>
       </div>
       
