@@ -65,6 +65,7 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
       }
       
       const data = await response.json();
+      console.log('Collector stats data:', data);
       setCollectorStats(data);
     } catch (err) {
       console.error('Failed to fetch collector stats:', err);
@@ -74,6 +75,10 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
 
   // Format currency for display
   const formatCurrency = (value: number) => {
+    // Check if value is a valid number
+    if (isNaN(value) || value === undefined) {
+      return '$0.00';
+    }
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -267,14 +272,24 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
     );
   }
 
-  // Prepare chart data for collector stats
+  // Ensure we have valid numbers for metrics
+  const metrics = {
+    totalEarnings: Number(profileData.metrics?.totalEarnings) || 0,
+    posts: Number(profileData.metrics?.posts) || 0,
+    averageEarningsPerPost: Number(profileData.metrics?.averageEarningsPerPost) || 0,
+    totalVolume: Number(profileData.metrics?.totalVolume) || 0
+  };
+
+  // Prepare chart data for collector stats with fallback values
   const COLORS = ['#10B981', '#6366F1'];
-  const chartData = collectorStats ? [
-    { name: 'Collectors', value: collectorStats.collectors.percentage },
-    { name: 'Traders', value: collectorStats.traders.percentage }
-  ] : [
-    { name: 'Collectors', value: 75 },
-    { name: 'Traders', value: 25 }
+  
+  // Default to reasonable values if collector stats aren't available
+  const collectorsPercentage = collectorStats?.collectors?.percentage ?? 75;
+  const tradersPercentage = collectorStats?.traders?.percentage ?? 25;
+  
+  const chartData = [
+    { name: 'Collectors', value: collectorsPercentage },
+    { name: 'Traders', value: tradersPercentage }
   ];
 
   return (
@@ -305,7 +320,7 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
           ) : (
             <div className="h-16 w-16 rounded-full bg-lime-900/20 flex items-center justify-center border-2 border-lime-500/30 shadow-lg shadow-lime-500/10 flex-shrink-0">
               <span className="text-lime-500 text-xl font-bold">
-                {profileData.displayName.charAt(0).toUpperCase()}
+                {profileData.displayName?.charAt(0)?.toUpperCase() || 'Z'}
               </span>
             </div>
           )}
@@ -321,28 +336,28 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
           <div className="bg-[#13151F] p-3 rounded-lg">
             <p className="text-gray-400 text-xs mb-1 font-mono">TOTAL EARNED</p>
             <p className="text-lime-400 text-xl font-bold">
-              {formatCurrency(profileData.metrics.totalEarnings)}
+              {formatCurrency(metrics.totalEarnings)}
             </p>
           </div>
           
           <div className="bg-[#13151F] p-3 rounded-lg">
             <p className="text-gray-400 text-xs mb-1 font-mono">COINS</p>
             <p className="text-white text-xl font-bold">
-              {profileData.metrics.posts}
+              {metrics.posts}
             </p>
           </div>
           
           <div className="bg-[#13151F] p-3 rounded-lg">
             <p className="text-gray-400 text-xs mb-1 font-mono">AVG EARNINGS</p>
             <p className="text-lime-400 text-xl font-bold">
-              {formatCurrency(profileData.metrics.averageEarningsPerPost)}
+              {formatCurrency(metrics.averageEarningsPerPost)}
             </p>
           </div>
           
           <div className="bg-[#13151F] p-3 rounded-lg">
             <p className="text-gray-400 text-xs mb-1 font-mono">TOTAL VOLUME</p>
             <p className="text-white text-xl font-bold">
-              {formatCurrency(profileData.metrics.totalVolume)}
+              {formatCurrency(metrics.totalVolume)}
             </p>
           </div>
         </div>
