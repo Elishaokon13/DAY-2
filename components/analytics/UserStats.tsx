@@ -13,6 +13,9 @@ interface UserStatsData {
   traders: number;
   collectors: number;
   totalUsers: number;
+  price: number;
+  name: string;
+  symbol: string;
 }
 
 export function UserStats({ coinAddress }: UserStatsProps) {
@@ -37,7 +40,16 @@ export function UserStats({ coinAddress }: UserStatsProps) {
         
         const data = await response.json();
         console.log(`UserStats: Data received:`, data);
-        setStatsData(data);
+        
+        // Extract primitive values from the response objects
+        setStatsData({
+          traders: typeof data.traders === 'object' ? data.traders.count : data.traders,
+          collectors: typeof data.collectors === 'object' ? data.collectors.count : data.collectors,
+          totalUsers: data.totalUsers,
+          price: data.price,
+          name: data.name,
+          symbol: data.symbol
+        });
       } catch (err) {
         console.error('Failed to fetch user stats:', err);
         setError('Failed to load user statistics');
@@ -46,7 +58,10 @@ export function UserStats({ coinAddress }: UserStatsProps) {
         setStatsData({
           traders: 8,
           collectors: 12,
-          totalUsers: 20
+          totalUsers: 20,
+          price: 0,
+          name: '',
+          symbol: ''
         });
       } finally {
         setLoading(false);
@@ -71,8 +86,10 @@ export function UserStats({ coinAddress }: UserStatsProps) {
     if (!statsData) return [];
     
     return [
-      { name: 'Collectors', value: statsData.collectors },
-      { name: 'Traders', value: statsData.traders }
+      { name: 'Collectors', value: typeof statsData.collectors === 'object' ? 
+          (statsData.collectors.count || 0) : statsData.collectors },
+      { name: 'Traders', value: typeof statsData.traders === 'object' ? 
+          (statsData.traders.count || 0) : statsData.traders }
     ];
   };
 
@@ -146,14 +163,24 @@ export function UserStats({ coinAddress }: UserStatsProps) {
       <div className="grid grid-cols-2 gap-6 mt-4">
         <div className="border-b border-gray-700 pb-2">
           <p className="text-gray-400 font-mono text-sm">COLLECTOR VOLUME</p>
-          <p className="text-[#8FE388] text-lg font-mono">{formatCurrency(statsData.collectors * statsData.price)}</p>
-          <p className="text-gray-500 text-xs font-mono">{statsData.collectors} users</p>
+          <p className="text-[#8FE388] text-lg font-mono">{formatCurrency(
+            (typeof statsData.collectors === 'object' ? statsData.collectors.count : statsData.collectors) * 
+            (statsData.price || 0)
+          )}</p>
+          <p className="text-gray-500 text-xs font-mono">{
+            typeof statsData.collectors === 'object' ? statsData.collectors.count : statsData.collectors
+          } users</p>
         </div>
         
         <div className="border-b border-gray-700 pb-2">
           <p className="text-gray-400 font-mono text-sm">TRADER VOLUME</p>
-          <p className="text-[#F3BA4A] text-lg font-mono">{formatCurrency(statsData.traders * statsData.price)}</p>
-          <p className="text-gray-500 text-xs font-mono">{statsData.traders} users</p>
+          <p className="text-[#F3BA4A] text-lg font-mono">{formatCurrency(
+            (typeof statsData.traders === 'object' ? statsData.traders.count : statsData.traders) * 
+            (statsData.price || 0)
+          )}</p>
+          <p className="text-gray-500 text-xs font-mono">{
+            typeof statsData.traders === 'object' ? statsData.traders.count : statsData.traders
+          } users</p>
         </div>
       </div>
       
