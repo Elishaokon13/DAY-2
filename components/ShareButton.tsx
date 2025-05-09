@@ -75,7 +75,7 @@ export function ShareButton({ displayName }: ShareButtonProps) {
       }
   
       const { blobUrl } = await saveRes.json();
-      console.log("✅ Blob URL:", blobUrl);
+      console.log("✅ Image processing successful. Using URL:", blobUrl.substring(0, 50) + "...");
       
       // Set state to ready for sharing
       setBlobUrl(blobUrl);
