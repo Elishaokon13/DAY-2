@@ -65,12 +65,13 @@ Key features include:
   - Implementation: Installed Recharts library via npm
 
 ### 2. Backend API Development
-- [ ] Task 2.1: Create new API endpoint for fetching creator earnings
+- [x] Task 2.1: Create new API endpoint for fetching creator earnings
   - Success Criteria: /api/creator-earnings endpoint returns structured earnings data
   - Implementation Details:
-    - Use getProfile, getProfileBalances, and getCoin functions from @zoralabs/coins-sdk
-    - Aggregate data across multiple coins for a creator
-    - Calculate total earnings from transaction history
+    - Created API endpoint that uses getProfile, getProfileBalances, and getCoin functions
+    - Aggregates data across multiple coins created by the user
+    - Calculates total earnings based on 5% creator fee from total volume
+    - Returns metrics including total earnings, total volume, posts count, and average earnings per post
 - [ ] Task 2.2: Create API endpoint for collector/trader stats
   - Success Criteria: /api/collector-stats endpoint returns user classification data
   - Implementation Details:
@@ -107,12 +108,15 @@ Key features include:
 ## Project Status Board
 - [x] Task 1.1: Research Zora API endpoints for creator earnings data
 - [x] Task 1.2: Install necessary dependencies for data visualization
-- [ ] Task 2.1: Create new API endpoint for fetching creator earnings
+- [x] Task 2.1: Create new API endpoint for fetching creator earnings
+- [ ] Task 2.2: Create API endpoint for collector/trader stats
 
 ## Executor's Feedback or Assistance Requests
 - Recharts has been selected as our charting library and installed successfully.
-- Ready to move on to Task 2.1: Creating API endpoint for creator earnings.
-- Will need to examine the current implementation of API endpoints in the codebase to follow similar patterns.
+- Created the /api/creator-earnings endpoint to calculate and return creator earnings data
+- The earnings are currently estimated based on a 5% creator fee from total volume
+- For more accurate data, we would need to track individual transactions, which might require additional API endpoints or data sources
+- Moving on to Task 2.2: Creating API for collector/trader stats
 
 ## Lessons
 - Always include debug info in program output
