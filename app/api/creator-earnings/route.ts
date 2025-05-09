@@ -28,11 +28,15 @@ export async function GET(req: NextRequest) {
   const cleanHandle = handle.trim().replace(/^@/, '');
 
   try {
+    console.log(`Fetching profile for ${cleanHandle}...`);
     // Get profile and balances data
     const [profileRes, balancesRes] = await Promise.all([
       getProfile({ identifier: cleanHandle }),
       getProfileBalances({ identifier: cleanHandle }),
     ]);
+
+    console.log("Profile response:", JSON.stringify(profileRes.data, null, 2));
+    console.log("Balances response:", JSON.stringify(balancesRes.data, null, 2));
 
     // Extract profile information
     const profileData = profileRes?.data;
@@ -49,7 +53,10 @@ export async function GET(req: NextRequest) {
 
     // Extract coin balances
     const balanceEdges = balancesRes?.data?.profile?.coinBalances?.edges || [];
+    console.log("Balance edges:", JSON.stringify(balanceEdges, null, 2));
+    
     const coinBalances = balanceEdges.map(edge => edge.node);
+    console.log("Coin balances:", JSON.stringify(coinBalances, null, 2));
     
     // The user's address from their profile's wallet
     // Using publicWallet.walletAddress
