@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { ZoraToken } from "@/app/api/zora-tokens/route" 
+import { useState } from "react"
 
 interface CollageImageProps {
   src: string
@@ -13,6 +14,17 @@ interface CollageImageProps {
 }
 
 export function CollageImage({ src, alt, className, priority = false, onClick, token }: CollageImageProps) {
+  const [imgError, setImgError] = useState(false);
+  const placeholderSrc = "/placeholder.svg";
+
+  // Handle image loading errors
+  const handleImageError = () => {
+    console.log(`Image failed to load: ${src}, using placeholder`);
+    setImgError(true);
+  };
+
+  // Use the placeholder if there's an error or src is empty
+  const imageSrc = (!src || imgError) ? placeholderSrc : src;
 
   // Build a query string from the token object
   const queryString = new URLSearchParams()
@@ -22,15 +34,23 @@ export function CollageImage({ src, alt, className, priority = false, onClick, t
   
   return (
     <div className={cn("relative w-full h-full group", className)}>
-      <Link href={`token/${token?.address}?${queryString.toString()}`} className="block w-full h-full" onClick={onClick} >
-        <Image
-          src={src || "/placeholder.svg"}
-          alt={alt}
-          fill
-          className="object-cover transition-all duration-300"
-          priority={priority}
-          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-        />
+      <Link 
+        href={token?.address ? `token/${token.address}?${queryString.toString()}` : "#"} 
+        className="block w-full h-full" 
+        onClick={onClick}
+      >
+        <div className="w-full h-full relative bg-[#1a1e2e]">
+          <Image
+            src={imageSrc}
+            alt={alt || "Token image"}
+            fill
+            className="object-cover transition-all duration-300"
+            priority={priority}
+            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+            onError={handleImageError}
+            unoptimized={imageSrc === placeholderSrc} // Don't optimize placeholder SVGs
+          />
+        </div>
         
         {/* Token name overlay - visible only on hover */}
         {token?.name && (
@@ -54,6 +74,15 @@ export function CollageImage({ src, alt, className, priority = false, onClick, t
           }}
         ></div>
       </div>
+
+      {/* Fallback content shown if image fails to load */}
+      {imgError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#1a1e2e]/50 pointer-events-none">
+          <span className="text-lime-500 text-xs font-mono">
+            {token?.symbol || 'ZORA'}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
