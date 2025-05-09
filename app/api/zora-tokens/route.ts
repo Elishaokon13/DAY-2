@@ -9,21 +9,33 @@ const getMockTokens = (displayName: string) => {
       address: "0x31bb5f5a4644d2ad26f7bcbff042a1834f222819",
       name: "Hapa Sushi",
       symbol: "Hapa Sushi",
-      imageUrl: "https://scontent-iad4-1.choicecdn.com/-/rs:fit:1200:1200/f:best/aHR0cHM6Ly9tYWdpYy5kZWNlbnRyYWxpemVkLWNvbnRlbnQuY29tL2lwZnMvYmFmeWJlaWdkNjJtaXBrdHlreG8ybzRnamFlb25iNzZ1bXh3N200bnV6b2c2b3J0b3B3dnc2M25pdXU=",
+      imageUrl: {
+        medium: "https://ipfs.decentralized-content.com/ipfs/bafybeigd62mipktykxo2o4gjaeonb76umxw7m4nuzog6ortopwvw63niuu",
+        small: "https://ipfs.decentralized-content.com/ipfs/bafybeigd62mipktykxo2o4gjaeonb76umxw7m4nuzog6ortopwvw63niuu",
+        large: "https://ipfs.decentralized-content.com/ipfs/bafybeigd62mipktykxo2o4gjaeonb76umxw7m4nuzog6ortopwvw63niuu"
+      },
       balance: "13136507119571769710056288"
     },
     {
       address: "0x9b41d403d679e7d8703b923a9a66a3f463d36711",
       name: "Talking to my therapist",
       symbol: "Talking to my therapist",
-      imageUrl: "https://scontent-iad4-1.choicecdn.com/-/rs:fit:1200:1200/f:best/aHR0cHM6Ly9tYWdpYy5kZWNlbnRyYWxpemVkLWNvbnRlbnQuY29tL2lwZnMvYmFmeWJlaWdlZzN3bzMzZGMzZHN1bW9nYTJnZ3lyMmlleWtua29iNHZrbzdjdXhxd2F0N2piZXprcHk=",
+      imageUrl: {
+        medium: "https://ipfs.decentralized-content.com/ipfs/bafybeigrg3wo33dc3dsumoga2ggyr2ieyknkob4vko7cuxqwat7jbezkpy",
+        small: "https://ipfs.decentralized-content.com/ipfs/bafybeigrg3wo33dc3dsumoga2ggyr2ieyknkob4vko7cuxqwat7jbezkpy",
+        large: "https://ipfs.decentralized-content.com/ipfs/bafybeigrg3wo33dc3dsumoga2ggyr2ieyknkob4vko7cuxqwat7jbezkpy"
+      },
       balance: "12907336988134996012559401"
     },
     {
       address: "0xedbd267cfbc63561bef77b6776b49065f50faa08",
       name: "Sunrises in Denver are different",
       symbol: "Sunrises in Denver are different",
-      imageUrl: "https://scontent-iad4-1.choicecdn.com/-/rs:fit:1200:1200/f:best/aHR0cHM6Ly9tYWdpYy5kZWNlbnRyYWxpemVkLWNvbnRlbnQuY29tL2lwZnMvYmFmeWJlaWZtYWZlZmg2c291aGF4MnJndzZuZjUzd2pra3RmazR5bWduemNkY3J1Njc2ZmZrcDRycG0=",
+      imageUrl: {
+        medium: "https://ipfs.decentralized-content.com/ipfs/bafybeifmafefh6souhax2rgw6nf53wjkktfk4ymgnzcdcru676ffkp4rpm",
+        small: "https://ipfs.decentralized-content.com/ipfs/bafybeifmafefh6souhax2rgw6nf53wjkktfk4ymgnzcdcru676ffkp4rpm",
+        large: "https://ipfs.decentralized-content.com/ipfs/bafybeifmafefh6souhax2rgw6nf53wjkktfk4ymgnzcdcru676ffkp4rpm"
+      },
       balance: "12544191173569673341079278"
     }
   ];
@@ -81,20 +93,29 @@ export async function GET(req: NextRequest) {
           const topTokens = coinBalances
             .filter((node) => 
               Number(node.balance) > 0 && 
-              node.coin?.mediaContent?.previewImage
+              (node.coin?.mediaContent?.previewImage || node.coin?.symbol)
             )
             .sort((a, b) => 
               Number(b.balance || 0) - Number(a.balance || 0)
             )
             .slice(0, 5);
 
-          tokens = topTokens.map(({ coin, balance }) => ({
-            address: coin?.address || '',
-            name: coin?.name || 'Unknown Token',
-            symbol: coin?.symbol || '???',
-            imageUrl: coin?.mediaContent?.previewImage?.medium || '/placeholder.svg',
-            balance,
-          }));
+          tokens = topTokens.map(({ coin, balance }) => {
+            // Create imageUrl object with fallbacks
+            const imageUrl = {
+              small: coin?.mediaContent?.previewImage?.small || null,
+              medium: coin?.mediaContent?.previewImage?.medium || null,
+              large: coin?.mediaContent?.previewImage?.large || null
+            };
+
+            return {
+              address: coin?.address || '',
+              name: coin?.name || coin?.symbol || 'Unknown Token',
+              symbol: coin?.symbol || '???',
+              imageUrl: imageUrl,
+              balance: balance || '0',
+            };
+          });
         } else {
           // Fallback to mock data if API response doesn't have the expected structure
           console.log("API response doesn't contain coin balances, using mock data");
@@ -108,6 +129,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Log tokens for debugging
+    console.log(`Found ${tokens.length} tokens for ${cleanHandle}`);
+    
     return NextResponse.json({
       tokens,
       displayName,
@@ -118,9 +142,11 @@ export async function GET(req: NextRequest) {
     console.error('Zora API error:', error)
     return NextResponse.json({ 
       error: 'Failed to fetch from Zora',
-      tokens: [],
-      displayName: cleanHandle
-    }, { status: 500 })
+      tokens: getMockTokens(cleanHandle), // Always return mock tokens on error
+      displayName: cleanHandle,
+      profileImage: null,
+      profileHandle: cleanHandle
+    }, { status: 200 }) // Return 200 with mock data instead of error
   }
 }
 
@@ -128,7 +154,11 @@ export type ZoraToken = {
   address: string
   name: string
   symbol: string
-  imageUrl: string
+  imageUrl: {
+    small: string | null
+    medium: string | null
+    large: string | null
+  }
   balance: string
 }
 
