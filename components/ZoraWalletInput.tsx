@@ -175,7 +175,12 @@ export function ZoraWalletInput({ displayName, onHandleChange, onViewAnalytics }
               <h3 className="text-lg font-mono text-gray-300 mb-4 text-center">
                 {profileData?.displayName}'s Tokens
               </h3>
-              <Collage tokens={tokens} profileData={profileData} />
+              <Collage 
+                tokens={tokens} 
+                displayName={profileData?.displayName || ''}
+                selectedToken={null} 
+                setSelectedToken={() => {}}
+              />
             </div>
           )}
         </div>
