@@ -6,6 +6,7 @@ import { UserStats } from './UserStats';
 import { TimelineChart } from './TimelineChart';
 import { Button } from '../ui/button';
 import { CreatorEarningsResponse } from '@/app/api/creator-earnings/route';
+import { CreatorProfile } from './CreatorProfile';
 
 interface AnalyticsDashboardProps {
   handle: string;
@@ -141,6 +142,9 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
       </div>
 
       <div className="grid gap-6">
+        {/* Creator Profile */}
+        <CreatorProfile handle={handle} />
+        
         {/* Earnings Summary */}
         <EarningsSummary handle={handle} />
         
