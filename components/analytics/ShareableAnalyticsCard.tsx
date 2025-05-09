@@ -306,12 +306,17 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
   const COLORS = ['#10B981', '#6366F1'];
   
   // Default to reasonable values if collector stats aren't available
-  const collectorsPercentage = collectorStats?.collectors?.percentage ?? 75;
-  const tradersPercentage = collectorStats?.traders?.percentage ?? 25;
+  const collectorsPercentage = typeof collectorStats?.collectors?.percentage === 'object' 
+    ? (collectorStats?.collectors?.percentage?.percentage || 75) 
+    : (collectorStats?.collectors?.percentage ?? 75);
+    
+  const tradersPercentage = typeof collectorStats?.traders?.percentage === 'object'
+    ? (collectorStats?.traders?.percentage?.percentage || 25)
+    : (collectorStats?.traders?.percentage ?? 25);
   
   const chartData = [
-    { name: 'Collectors', value: collectorsPercentage },
-    { name: 'Traders', value: tradersPercentage }
+    { name: 'Collectors', value: typeof collectorsPercentage === 'object' ? 75 : collectorsPercentage },
+    { name: 'Traders', value: typeof tradersPercentage === 'object' ? 25 : tradersPercentage }
   ];
 
   return (
