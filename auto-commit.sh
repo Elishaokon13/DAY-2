@@ -21,9 +21,13 @@ commit_changes() {
   # Check if there are changes to commit
   if git status --porcelain | grep . >/dev/null; then
     echo "Changes detected, committing..."
+    # Get list of changed files
+    CHANGED_FILES=$(git status --porcelain | awk '{print $2}' | tr '\n' ', ' | sed 's/, $//')
+    # Create custom commit message
+    COMMIT_MESSAGE="Auto-commit: Modified ${CHANGED_FILES} at $(date '+%Y-%m-%d %H:%M:%S')"
     git add --all
-    git commit -m "Auto-commit: $(date '+%Y-%m-%d %H:%M:%S')"
-    echo "Committed changes"
+    git commit -m "$COMMIT_MESSAGE"
+    echo "Committed changes: $COMMIT_MESSAGE"
     # Optional: Push to remote (uncomment to enable)
     # git push "$REMOTE" "$BRANCH"
   else
