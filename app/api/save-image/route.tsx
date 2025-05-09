@@ -1,13 +1,12 @@
 import { NextRequest } from "next/server";
-import { put } from "@vercel/blob";
 
 // Force dynamic rendering to ensure fresh image generation on each request
 export const dynamic = "force-dynamic";
 
 /**
- * POST handler for saving captured images to Blob storage
+ * POST handler for saving captured images
  * @param request - The incoming HTTP request with displayName and base64 image data
- * @returns JSON with the blob URL
+ * @returns JSON with the local image data URL
  */
 export async function POST(request: NextRequest) {
   try {
@@ -27,30 +26,13 @@ export async function POST(request: NextRequest) {
       return new Response("Invalid image data format", { status: 400 });
     }
     
-    // Convert the base64 data URL to a buffer
-    const base64Data = imageData.split(',')[1];
-    const buffer = Buffer.from(base64Data, 'base64');
+    // Instead of using Vercel Blob, simply return the image data URL directly
+    // This bypasses the need for the BLOB_READ_WRITE_TOKEN
     
-    // Convert buffer to ReadableStream for Vercel Blob
-    const readableStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue(new Uint8Array(buffer));
-        controller.close();
-      },
-    });
-
-    // URL encode the displayName to handle special characters like parentheses
-    const encodedDisplayName = encodeURIComponent(displayName);
-
-    // Save the image to Vercel Blob with encoded filename
-    const blob = await put(`images/${encodedDisplayName}.png`, readableStream, {
-      access: "public",
-      contentType: "image/png",
-      allowOverwrite: true,
-    });
-
-    // Return the blob URL
-    return Response.json({ blobUrl: blob.url });
+    console.log(`✅ Successfully processed image for: ${displayName}`);
+    
+    // Return the image data URL as the blob URL
+    return Response.json({ blobUrl: imageData });
   } catch (err: unknown) {
     console.error("❌ API error in /api/save-image:", err);
     return new Response(`Failed to save image: ${err instanceof Error ? err.message : String(err)}`, {
