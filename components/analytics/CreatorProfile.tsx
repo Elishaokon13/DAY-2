@@ -81,8 +81,8 @@ export function CreatorProfile({ handle }: CreatorProfileProps) {
               <Image 
                 src={profileData.profileImage} 
                 alt={profileData.displayName} 
-                width={80} 
-                height={80}
+                fill
+                sizes="80px"
                 className="object-cover rounded-full"
               />
             </div>
