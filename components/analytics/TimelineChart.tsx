@@ -41,7 +41,7 @@ export function TimelineChart({
       try {
         console.log(`TimelineChart: Fetching timeline data for coin ${coinAddress}, period ${period}`);
         const response = await fetch(
-          `/api/earnings-timeline?address=${encodeURIComponent(coinAddress)}&period=${period}`
+          `/api/earnings-timeline?coinAddress=${encodeURIComponent(coinAddress)}&period=${period}`
         );
         
         if (!response.ok) {
