@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
   const cleanHandle = handle.trim().replace(/^@/, '');
 
   // Always use mock data for development/demo purposes
-  const forceMockData = useMockData || true; // Force mock data for all handles
+  const forceMockData = useMockData || false; // Allow real data
 
   try {
     console.log(`Fetching profile for ${cleanHandle}...`);
