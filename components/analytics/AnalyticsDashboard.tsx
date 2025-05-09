@@ -137,7 +137,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
             size="sm"
             onClick={onBack}
           >
-            <Search></Search> for another creator
+            Search for another creator
           </Button>
         )}
       </div>
