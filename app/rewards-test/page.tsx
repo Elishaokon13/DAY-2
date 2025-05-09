@@ -169,7 +169,7 @@ export default function RewardsTestPage() {
               <h3 className="text-lg font-mono text-white mb-3">ERC20 Royalties</h3>
               <div className="bg-[#13151F] p-4 rounded-lg">
                 <div className="space-y-2">
-                  {results.earnings.secondaryRoyalties.erc20.map((token, index) => (
+                  {results.earnings.secondaryRoyalties.erc20.map((token: {token: string, amount: string}, index: number) => (
                     <div key={index}>
                       <p className="text-gray-400 text-xs">{token.token}</p>
                       <p className="text-white">{token.amount}</p>
