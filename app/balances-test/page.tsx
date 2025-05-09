@@ -40,6 +40,12 @@ export default function BalancesTestPage() {
     setLoading(true);
     setError(null);
     
+    // Reset all data states
+    setResults(null);
+    setEarningsData(null);
+    setRewardsData(null);
+    setTimelineData(null);
+    
     try {
       // Fetch profile balances
       const response = await fetch(`/api/profile-balances?identifier=${encodeURIComponent(identifier)}&fetchAll=${fetchAll}`);
@@ -53,7 +59,7 @@ export default function BalancesTestPage() {
       console.log('Profile balances response:', data);
       setResults(data);
       
-      // Fetch creator earnings if we have a handle
+      // Fetch creator earnings if we have a handle (with no-mock flag)
       if (data.profile.handle) {
         fetchCreatorEarnings(data.profile.handle);
       }
@@ -72,7 +78,8 @@ export default function BalancesTestPage() {
   
   const fetchCreatorEarnings = async (handle: string) => {
     try {
-      const response = await fetch(`/api/creator-earnings?handle=${encodeURIComponent(handle)}`);
+      // Add no-mock parameter to avoid using mock data
+      const response = await fetch(`/api/creator-earnings?handle=${encodeURIComponent(handle)}&mock=false`);
       
       if (!response.ok) {
         console.error(`Error fetching creator earnings: ${response.statusText}`);
@@ -81,11 +88,15 @@ export default function BalancesTestPage() {
       
       const data = await response.json();
       console.log('Creator earnings response:', data);
-      setEarningsData(data);
       
-      // Fetch earnings timeline for the first coin if available
-      if (data.createdCoins && data.createdCoins.length > 0) {
+      // Only set earnings data if there are actual created coins (not mock data)
+      if (data.createdCoins && data.createdCoins.length > 0 && !data._isMockData) {
+        setEarningsData(data);
+        
+        // Fetch earnings timeline for the first coin if available
         fetchEarningsTimeline(data.createdCoins[0].address);
+      } else {
+        console.log('No real creator earnings data available');
       }
     } catch (err) {
       console.error('Failed to fetch creator earnings:', err);
@@ -103,7 +114,13 @@ export default function BalancesTestPage() {
       
       const data = await response.json();
       console.log('Creator rewards response:', data);
-      setRewardsData(data);
+      
+      // Only set rewards data if there are actual rewards
+      if (data.earnings && data.earnings.total > 0) {
+        setRewardsData(data);
+      } else {
+        console.log('No creator rewards data available');
+      }
     } catch (err) {
       console.error('Failed to fetch creator rewards:', err);
     }
@@ -111,7 +128,8 @@ export default function BalancesTestPage() {
   
   const fetchEarningsTimeline = async (coinAddress: string) => {
     try {
-      const response = await fetch(`/api/earnings-timeline?coinAddress=${encodeURIComponent(coinAddress)}&period=${period}`);
+      // Add no-mock parameter to avoid using mock data
+      const response = await fetch(`/api/earnings-timeline?coinAddress=${encodeURIComponent(coinAddress)}&period=${period}&mock=false`);
       
       if (!response.ok) {
         console.error(`Error fetching earnings timeline: ${response.statusText}`);
@@ -120,7 +138,13 @@ export default function BalancesTestPage() {
       
       const data = await response.json();
       console.log('Earnings timeline response:', data);
-      setTimelineData(data);
+      
+      // Only set timeline data if it's not mock data
+      if (data.timeline && data.timeline.length > 0 && !data._isMockData) {
+        setTimelineData(data);
+      } else {
+        console.log('No real earnings timeline data available');
+      }
     } catch (err) {
       console.error('Failed to fetch earnings timeline:', err);
     }
@@ -178,17 +202,6 @@ export default function BalancesTestPage() {
     
     return null;
   };
-  
-  // Generate mock data for collector vs trader distribution
-  const generateCollectorTraderData = () => {
-    // In a real implementation, this would come from transaction analysis
-    return [
-      { name: 'Collectors', value: 70 },
-      { name: 'Traders', value: 30 }
-    ];
-  };
-  
-  const COLORS = ['#4CAF50', '#FF9800'];
 
   return (
     <div className="container mx-auto p-4 max-w-4xl">
@@ -243,6 +256,17 @@ export default function BalancesTestPage() {
         </Card>
       )}
       
+      {loading && (
+        <Card className="p-6 bg-[#1a1e2e] border border-gray-700 mb-6">
+          <div className="flex items-center justify-center space-x-2 animate-pulse">
+            <div className="w-4 h-4 bg-lime-500 rounded-full"></div>
+            <div className="w-4 h-4 bg-lime-500 rounded-full delay-75"></div>
+            <div className="w-4 h-4 bg-lime-500 rounded-full delay-150"></div>
+          </div>
+          <p className="text-center text-gray-400 mt-4">Loading data, please wait...</p>
+        </Card>
+      )}
+      
       {results && (
         <div className="space-y-6">
           {/* Profile Card */}
@@ -282,7 +306,7 @@ export default function BalancesTestPage() {
           </Card>
           
           {/* Creator Earnings Summary */}
-          {earningsData && (
+          {earningsData ? (
             <Card className="p-6 bg-[#1a1e2e] border border-gray-700">
               <h2 className="text-xl font-mono text-lime-500 mb-6">Creator Earnings Summary</h2>
               
@@ -316,10 +340,17 @@ export default function BalancesTestPage() {
                 </div>
               </div>
             </Card>
-          )}
+          ) : results.profile.handle ? (
+            <Card className="p-6 bg-[#1a1e2e] border border-gray-700">
+              <h2 className="text-xl font-mono text-lime-500 mb-4">Creator Earnings</h2>
+              <p className="text-gray-400">
+                No real earnings data available for this creator. This user may not have created any posts yet or the data may be temporarily unavailable.
+              </p>
+            </Card>
+          ) : null}
           
           {/* Creator Rewards */}
-          {rewardsData && (
+          {rewardsData && rewardsData.earnings.total > 0 ? (
             <Card className="p-6 bg-[#1a1e2e] border border-gray-700">
               <h2 className="text-xl font-mono text-lime-500 mb-6">Creator Rewards</h2>
               
@@ -346,10 +377,17 @@ export default function BalancesTestPage() {
                 </div>
               </div>
             </Card>
-          )}
+          ) : results.profile.publicWallet ? (
+            <Card className="p-6 bg-[#1a1e2e] border border-gray-700">
+              <h2 className="text-xl font-mono text-lime-500 mb-4">Creator Rewards</h2>
+              <p className="text-gray-400">
+                No rewards data available for this creator. The user may not have earned any protocol rewards or royalties yet.
+              </p>
+            </Card>
+          ) : null}
           
           {/* Earnings Timeline Chart */}
-          {timelineData && (
+          {timelineData ? (
             <Card className="p-6 bg-[#1a1e2e] border border-gray-700">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-mono text-lime-500">EARNINGS OVER TIME</h2>
@@ -424,90 +462,71 @@ export default function BalancesTestPage() {
                 </ResponsiveContainer>
               </div>
             </Card>
-          )}
+          ) : earningsData ? (
+            <Card className="p-6 bg-[#1a1e2e] border border-gray-700">
+              <h2 className="text-xl font-mono text-lime-500 mb-4">Earnings Over Time</h2>
+              <p className="text-gray-400">
+                Real-time earnings data is not available. Historical earnings data could not be retrieved at this time.
+              </p>
+            </Card>
+          ) : null}
           
-          {/* Collector vs Trader Analysis */}
+          {/* Unique Holders Analysis */}
           {earningsData && earningsData.createdCoins?.length > 0 && (
             <Card className="p-6 bg-[#1a1e2e] border border-gray-700">
               <h2 className="text-xl font-mono text-lime-500 mb-6">Audience Analysis</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-white font-mono mb-3">Collector vs Trader Distribution</h3>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={generateCollectorTraderData()}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          paddingAngle={5}
-                          dataKey="value"
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        >
-                          {generateCollectorTraderData().map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-white font-mono mb-3">Unique Holders by Post</h3>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={earningsData.createdCoins.map(coin => ({
-                          name: coin.name.length > 15 ? coin.name.substring(0, 15) + '...' : coin.name,
-                          holders: parseInt(coin.uniqueHolders) || 0
-                        }))}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                        <XAxis dataKey="name" tick={{ fill: '#999' }} />
-                        <YAxis tick={{ fill: '#999' }} />
-                        <Tooltip />
-                        <Bar dataKey="holders" fill="#4CAF50" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+              <div>
+                <h3 className="text-white font-mono mb-3">Unique Holders by Post</h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={earningsData.createdCoins.map(coin => ({
+                        name: coin.name.length > 15 ? coin.name.substring(0, 15) + '...' : coin.name,
+                        holders: parseInt(coin.uniqueHolders) || 0
+                      }))}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                      <XAxis dataKey="name" tick={{ fill: '#999' }} />
+                      <YAxis tick={{ fill: '#999' }} />
+                      <Tooltip />
+                      <Bar dataKey="holders" fill="#4CAF50" />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </Card>
           )}
           
           {/* Balances Summary */}
-          <Card className="p-6 bg-[#1a1e2e] border border-gray-700">
-            <h2 className="text-xl font-mono text-lime-500 mb-6">Balances Summary</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="bg-[#13151F] p-3 rounded-lg">
-                <p className="text-gray-400 text-xs mb-1 font-mono">TOTAL COINS</p>
-                <p className="text-lime-400 text-xl font-bold">
-                  {results.balances.total}
-                </p>
-              </div>
+          {results.balances && (
+            <Card className="p-6 bg-[#1a1e2e] border border-gray-700">
+              <h2 className="text-xl font-mono text-lime-500 mb-6">Balances Summary</h2>
               
-              <div className="bg-[#13151F] p-3 rounded-lg">
-                <p className="text-gray-400 text-xs mb-1 font-mono">CREATED</p>
-                <p className="text-white text-xl font-bold">
-                  {results.balances.created.count}
-                </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-[#13151F] p-3 rounded-lg">
+                  <p className="text-gray-400 text-xs mb-1 font-mono">TOTAL COINS</p>
+                  <p className="text-lime-400 text-xl font-bold">
+                    {results.balances.total}
+                  </p>
+                </div>
+                
+                <div className="bg-[#13151F] p-3 rounded-lg">
+                  <p className="text-gray-400 text-xs mb-1 font-mono">CREATED</p>
+                  <p className="text-white text-xl font-bold">
+                    {results.balances.created.count}
+                  </p>
+                </div>
+                
+                <div className="bg-[#13151F] p-3 rounded-lg">
+                  <p className="text-gray-400 text-xs mb-1 font-mono">COLLECTED</p>
+                  <p className="text-white text-xl font-bold">
+                    {results.balances.collected.count}
+                  </p>
+                </div>
               </div>
-              
-              <div className="bg-[#13151F] p-3 rounded-lg">
-                <p className="text-gray-400 text-xs mb-1 font-mono">COLLECTED</p>
-                <p className="text-white text-xl font-bold">
-                  {results.balances.collected.count}
-                </p>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          )}
           
           {/* Created Coins */}
           {results.balances.created.count > 0 && (
@@ -610,7 +629,7 @@ export default function BalancesTestPage() {
           )}
           
           {/* Pagination Info */}
-          {results.pagination.nextCursor && (
+          {results.pagination?.nextCursor && (
             <Card className="p-4 bg-[#1a1e2e] border border-gray-700">
               <p className="text-gray-400 text-sm">
                 More results available. Next cursor: <span className="text-lime-500 font-mono text-xs">{results.pagination.nextCursor}</span>
