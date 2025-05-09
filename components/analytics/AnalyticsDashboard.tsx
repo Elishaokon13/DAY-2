@@ -26,6 +26,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
       setError(null);
       
       try {
+        console.log(`Fetching creator data for handle: ${handle}`);
         const response = await fetch(`/api/creator-earnings?handle=${encodeURIComponent(handle)}`);
         
         if (!response.ok) {
@@ -33,6 +34,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
         }
         
         const data = await response.json();
+        console.log("Creator data fetched:", data);
         setCreatorData(data);
         
         // Set the first coin as selected by default if available
@@ -65,11 +67,30 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
     );
   }
 
-  if (error || !creatorData) {
+  if (error) {
     return (
       <div className="p-6 text-red-500">
         <h2 className="text-xl font-mono mb-4">Error Loading Analytics</h2>
-        <p>{error || 'No creator data available'}</p>
+        <p>{error}</p>
+        {onBack && (
+          <Button 
+            variant="outline"
+            className="mt-4"
+            onClick={onBack}
+          >
+            Go Back
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  // If no data is available
+  if (!creatorData) {
+    return (
+      <div className="p-6 text-red-500">
+        <h2 className="text-xl font-mono mb-4">No Data Available</h2>
+        <p>Unable to load creator data.</p>
         {onBack && (
           <Button 
             variant="outline"
@@ -84,7 +105,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
   }
 
   // If no coins created yet
-  if (creatorData.createdCoins.length === 0) {
+  if (!creatorData.createdCoins || creatorData.createdCoins.length === 0) {
     return (
       <div className="p-6">
         <h2 className="text-2xl font-mono text-lime-500 mb-6">Creator Analytics</h2>
