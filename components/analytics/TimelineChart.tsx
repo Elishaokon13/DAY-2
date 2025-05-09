@@ -39,6 +39,7 @@ export function TimelineChart({
       setError(null);
       
       try {
+        console.log(`TimelineChart: Fetching timeline data for coin ${coinAddress}, period ${period}`);
         const response = await fetch(
           `/api/earnings-timeline?address=${encodeURIComponent(coinAddress)}&period=${period}`
         );
@@ -48,10 +49,20 @@ export function TimelineChart({
         }
         
         const data = await response.json();
-        setTimelineData(data);
+        console.log(`TimelineChart: Data received:`, data);
+        
+        if (data.timeline && Array.isArray(data.timeline)) {
+          setTimelineData(data);
+        } else {
+          throw new Error('Invalid timeline data format');
+        }
       } catch (err) {
         console.error('Failed to fetch timeline data:', err);
         setError('Failed to load timeline data. Please try again.');
+        
+        // Create mock data if there's an error
+        const mockData = createMockTimelineData(parseInt(period));
+        setTimelineData(mockData);
       } finally {
         setLoading(false);
       }
@@ -59,6 +70,36 @@ export function TimelineChart({
     
     fetchTimelineData();
   }, [coinAddress, period]);
+
+  // Create mock timeline data for fallback
+  const createMockTimelineData = (days: number) => {
+    const data = [];
+    const now = new Date();
+    let cumulativeEarnings = 0;
+    let cumulativeVolume = 0;
+    
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(now.getDate() - i);
+      
+      // Random daily values with a realistic trend
+      const dailyVolume = 100 + Math.random() * 300;
+      const dailyEarnings = dailyVolume * 0.05;
+      
+      cumulativeVolume += dailyVolume;
+      cumulativeEarnings += dailyEarnings;
+      
+      data.push({
+        date: date.toISOString().split('T')[0],
+        volume: dailyVolume,
+        earnings: dailyEarnings,
+        cumulativeVolume,
+        cumulativeEarnings,
+      });
+    }
+    
+    return data;
+  };
 
   // Helper function to format currency
   const formatCurrency = (value: number) => {
@@ -98,6 +139,10 @@ export function TimelineChart({
     return null;
   };
 
+  const handlePeriodChange = (newPeriod: string) => {
+    setPeriod(newPeriod);
+  };
+
   if (loading) {
     return (
       <div className="p-6 bg-[#1a1e2e] rounded-lg border border-gray-700 animate-pulse">
@@ -125,25 +170,36 @@ export function TimelineChart({
         <h2 className="text-lime-500 text-xl font-mono">EARNINGS OVER TIME</h2>
         
         <div className="flex space-x-2">
-          <select 
-            className="bg-[#13151F] text-white font-mono text-sm p-2 border border-gray-700 rounded"
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
+          <button
+            onClick={() => handlePeriodChange('7')}
+            className={`px-3 py-1 rounded text-xs font-mono ${
+              period === '7'
+                ? 'bg-lime-700 text-white'
+                : 'bg-[#13151F] text-gray-300 hover:bg-gray-800'
+            }`}
           >
-            <option value="7">7 Days</option>
-            <option value="30">30 Days</option>
-            <option value="90">90 Days</option>
-            <option value="180">180 Days</option>
-          </select>
-          
-          <select 
-            className="bg-[#13151F] text-white font-mono text-sm p-2 border border-gray-700 rounded"
-            value={chartType}
-            onChange={(e) => setChartType(e.target.value as 'earnings' | 'cumulative')}
+            7D
+          </button>
+          <button
+            onClick={() => handlePeriodChange('30')}
+            className={`px-3 py-1 rounded text-xs font-mono ${
+              period === '30'
+                ? 'bg-lime-700 text-white'
+                : 'bg-[#13151F] text-gray-300 hover:bg-gray-800'
+            }`}
           >
-            <option value="earnings">Daily</option>
-            <option value="cumulative">Cumulative</option>
-          </select>
+            30D
+          </button>
+          <button
+            onClick={() => handlePeriodChange('90')}
+            className={`px-3 py-1 rounded text-xs font-mono ${
+              period === '90'
+                ? 'bg-lime-700 text-white'
+                : 'bg-[#13151F] text-gray-300 hover:bg-gray-800'
+            }`}
+          >
+            90D
+          </button>
         </div>
       </div>
       
