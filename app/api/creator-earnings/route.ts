@@ -88,6 +88,7 @@ export async function GET(req: NextRequest) {
         profileHandle: cleanHandle,
         displayName: cleanHandle,
         profileImage: null,
+        bio: "Creator on Zora 🎨",
         metrics: {
           totalEarnings,
           totalVolume,
@@ -125,6 +126,7 @@ export async function GET(req: NextRequest) {
         profileHandle: profileData?.profile?.handle,
         displayName,
         profileImage: profileData?.profile?.avatar?.medium || null,
+        bio: "Creator on Zora 🎨",
         metrics: {
           totalEarnings,
           totalVolume,
@@ -256,6 +258,7 @@ export async function GET(req: NextRequest) {
       profileHandle: cleanHandle,
       displayName: cleanHandle,
       profileImage: null,
+      bio: "Creator on Zora 🎨",
       metrics: {
         totalEarnings,
         totalVolume,
