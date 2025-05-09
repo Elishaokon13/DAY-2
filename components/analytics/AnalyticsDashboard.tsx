@@ -137,7 +137,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
             size="sm"
             onClick={onBack}
           >
-            Back to Tokens
+            SearchBack to Tokens
           </Button>
         )}
       </div>
