@@ -220,6 +220,7 @@ export async function GET(req: NextRequest) {
       profileHandle: profileData?.profile?.handle,
       displayName,
       profileImage: profileData?.profile?.avatar?.medium || null,
+      bio: profileData?.profile?.bio || "Creator on Zora",
       metrics: {
         totalEarnings,
         totalVolume,
@@ -278,6 +279,7 @@ export type CreatorEarningsResponse = {
   profileHandle: string | null;
   displayName: string;
   profileImage: string | null;
+  bio: string | null;
   metrics: {
     totalEarnings: number;
     totalVolume: number;
