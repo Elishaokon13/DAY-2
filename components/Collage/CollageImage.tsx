@@ -5,7 +5,7 @@ import { ZoraToken } from "@/app/api/zora-tokens/route"
 import { useState } from "react"
 
 interface CollageImageProps {
-  src: string
+  src: string | { small: string | null, medium: string | null, large: string | null }
   alt: string
   className?: string
   priority?: boolean
@@ -19,12 +19,27 @@ export function CollageImage({ src, alt, className, priority = false, onClick, t
 
   // Handle image loading errors
   const handleImageError = () => {
-    console.log(`Image failed to load: ${src}, using placeholder`);
+    console.log(`Image failed to load, using placeholder`);
     setImgError(true);
   };
 
-  // Use the placeholder if there's an error or src is empty
-  const imageSrc = (!src || imgError) ? placeholderSrc : src;
+  // Determine the image source based on the src prop type and error state
+  const getImageSrc = () => {
+    if (imgError) return placeholderSrc;
+    
+    if (typeof src === 'string') {
+      return src || placeholderSrc;
+    }
+    
+    // If src is an object, try to use medium, then small, then large, then fallback
+    if (src) {
+      return src.medium || src.small || src.large || placeholderSrc;
+    }
+    
+    return placeholderSrc;
+  };
+
+  const imageSrc = getImageSrc();
 
   // Build a query string from the token object
   const queryString = new URLSearchParams()
