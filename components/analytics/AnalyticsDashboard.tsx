@@ -7,6 +7,7 @@ import { TimelineChart } from './TimelineChart';
 import { Button } from '../ui/button';
 import { CreatorEarningsResponse } from '@/app/api/creator-earnings/route';
 import { CreatorProfile } from './CreatorProfile';
+import { ShareableAnalyticsCard } from './ShareableAnalyticsCard';
 
 interface AnalyticsDashboardProps {
   handle: string;
@@ -18,6 +19,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCoin, setSelectedCoin] = useState<string | null>(null);
+  const [showShareableCard, setShowShareableCard] = useState<boolean>(false);
 
   useEffect(() => {
     async function fetchCreatorData() {
@@ -126,20 +128,56 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
     );
   }
 
-  return (
-    <div className="p-4 md:p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-mono text-lime-500">Creator Analytics</h2>
-        {onBack && (
+  // Toggle between analytics dashboard and shareable card
+  if (showShareableCard) {
+    return (
+      <div className="p-4 md:p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-mono text-lime-500">Shareable Analytics Card</h2>
           <Button 
             className="bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400 py-4 px-4 font-mono tracking-wider transition-colors duration-300"
             variant="outline"
             size="sm"
-            onClick={onBack}
+            onClick={() => setShowShareableCard(false)}
           >
-            Search for another creator
+            Back to Analytics
           </Button>
-        )}
+        </div>
+        
+        <ShareableAnalyticsCard handle={handle} />
+        
+        <div className="mt-6 text-gray-500 text-center text-xs">
+          <p>Share your creator analytics with your audience or download for your records.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 md:p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-mono text-lime-500">Creator Analytics</h2>
+        <div className="flex gap-2">
+          <Button 
+            className="bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400 py-4 px-4 font-mono tracking-wider transition-colors duration-300"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowShareableCard(true)}
+          >
+            Create Shareable Card
+          </Button>
+          
+          {onBack && (
+            <Button 
+              className="bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400 py-4 px-4 font-mono tracking-wider transition-colors duration-300"
+              variant="outline"
+              size="sm"
+              onClick={onBack}
+            >
+              Search for another creator
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6">
