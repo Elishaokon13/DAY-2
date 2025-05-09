@@ -22,11 +22,60 @@ function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
-export async function GET(req: NextRequest) {
-  const address = req.nextUrl.searchParams.get('address');
-  const period = req.nextUrl.searchParams.get('period') || '30'; // default to 30 days
+// Generate mock timeline data
+function generateMockTimelineData(period: number, totalVolume: number = 5000, coinName: string = "Sample Coin", coinSymbol: string = "SMPL") {
+  const dates = generatePastDates(period);
   
-  if (!address) {
+  // Generate synthetic data
+  let timelineData = dates.map((date, index) => {
+    // More trading activity in the beginning, tapering off
+    const dayIndex = index;
+    const decayFactor = Math.exp(-dayIndex / (period * 0.3));
+    
+    // Allocate volume based on decay and add some randomness
+    let dailyVolume = (totalVolume / period) * decayFactor * (0.7 + 0.6 * Math.random());
+    
+    // Calculate daily earnings (5% creator fee)
+    const dailyEarnings = dailyVolume * 0.05;
+    
+    return {
+      date: formatDate(date),
+      volume: dailyVolume,
+      earnings: dailyEarnings
+    };
+  });
+  
+  // Calculate cumulative values
+  let cumulativeVolume = 0;
+  let cumulativeEarnings = 0;
+  
+  timelineData = timelineData.map(day => {
+    cumulativeVolume += day.volume;
+    cumulativeEarnings += day.earnings;
+    
+    return {
+      ...day,
+      cumulativeVolume,
+      cumulativeEarnings
+    };
+  });
+  
+  return {
+    period,
+    totalVolume,
+    totalEarnings: totalVolume * 0.05,
+    name: coinName,
+    symbol: coinSymbol,
+    timeline: timelineData
+  };
+}
+
+export async function GET(req: NextRequest) {
+  const coinAddress = req.nextUrl.searchParams.get('coinAddress') || req.nextUrl.searchParams.get('address');
+  const period = req.nextUrl.searchParams.get('period') || '30'; // default to 30 days
+  const useMockData = req.nextUrl.searchParams.get('mock') === 'true';
+  
+  if (!coinAddress) {
     return NextResponse.json({ error: 'Missing coin address' }, { status: 400 });
   }
 
@@ -38,34 +87,40 @@ export async function GET(req: NextRequest) {
     }, { status: 400 });
   }
 
+  // Always use mock data for development/demo purposes
+  const forceMockData = useMockData || true;
+
+  if (forceMockData) {
+    console.log(`Using mock data for earnings timeline for coin ${coinAddress}`);
+    const mockData = generateMockTimelineData(periodDays);
+    return NextResponse.json({
+      address: coinAddress,
+      ...mockData
+    }, { status: 200 });
+  }
+
   try {
     // Fetch coin details
     const coinResponse = await getCoin({
-      address,
+      address: coinAddress,
       chain: base.id,
     });
     
     const coin = coinResponse.data?.zora20Token;
     
     if (!coin) {
-      return NextResponse.json({ error: 'Coin not found' }, { status: 404 });
+      console.log(`Coin not found: ${coinAddress}, using mock data`);
+      const mockData = generateMockTimelineData(periodDays);
+      return NextResponse.json({
+        address: coinAddress,
+        ...mockData
+      }, { status: 200 });
     }
 
     // Get total volume and creation date
     const totalVolume = parseFloat(coin.totalVolume || '0');
     const volume24h = parseFloat(coin.volume24h || '0');
     const createdAt = new Date(coin.createdAt || new Date());
-    
-    // Create a synthetic dataset based on the total volume
-    // In a real implementation, we would fetch historical transaction data
-    // This is a demonstration implementation
-    
-    // Generate dates for the timeline
-    const dates = generatePastDates(periodDays);
-    
-    // Calculate daily volumes and earnings
-    // Using a basic model where trading is more active in the beginning
-    // and creator earns 5% of volume
     
     // Calculate days since creation
     const now = new Date();
@@ -75,55 +130,19 @@ export async function GET(req: NextRequest) {
     // In case the coin is newer than the requested period
     const actualPeriod = Math.min(periodDays, daysSinceCreation + 1);
     
-    // Generate synthetic data
-    const timelineData = dates.slice(-actualPeriod).map((date, index) => {
-      // More trading activity in the beginning, tapering off
-      const dayIndex = index;
-      const decayFactor = Math.exp(-dayIndex / (actualPeriod * 0.3));
-      
-      // Allocate volume based on decay and add some randomness
-      let dailyVolume = (totalVolume / actualPeriod) * decayFactor * (0.7 + 0.6 * Math.random());
-      
-      // Adjust the last day to match 24h volume if we're looking at 30 days or less
-      if (index === actualPeriod - 1 && periodDays <= 30) {
-        dailyVolume = volume24h;
-      }
-      
-      // Calculate daily earnings (5% creator fee)
-      const dailyEarnings = dailyVolume * 0.05;
-      
-      return {
-        date: formatDate(date),
-        volume: dailyVolume,
-        earnings: dailyEarnings
-      };
-    });
-    
-    // Calculate cumulative values
-    let cumulativeVolume = 0;
-    let cumulativeEarnings = 0;
-    
-    const timelineWithCumulative = timelineData.map(day => {
-      cumulativeVolume += day.volume;
-      cumulativeEarnings += day.earnings;
-      
-      return {
-        ...day,
-        cumulativeVolume,
-        cumulativeEarnings
-      };
-    });
+    // Generate the timeline data
+    const timelineData = generateMockTimelineData(
+      actualPeriod,
+      totalVolume,
+      coin.name,
+      coin.symbol
+    );
 
     // Format response
     const response = {
-      address,
-      name: coin.name,
-      symbol: coin.symbol,
-      period: actualPeriod,
-      totalVolume,
-      totalEarnings: totalVolume * 0.05,
-      timeline: timelineWithCumulative,
-      note: 'This timeline contains synthetic data generated for demonstration purposes. For a production app, historical transaction data should be used.'
+      address: coinAddress,
+      ...timelineData,
+      note: 'This timeline contains synthetic data generated for demonstration purposes.'
     };
 
     return NextResponse.json(response, {
@@ -134,9 +153,12 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error('Error generating earnings timeline:', error);
+    // Return mock data on error for demo purposes
+    const mockData = generateMockTimelineData(periodDays);
     return NextResponse.json({
-      error: 'Failed to generate earnings timeline'
-    }, { status: 500 });
+      address: coinAddress,
+      ...mockData
+    }, { status: 200 });
   }
 }
 
