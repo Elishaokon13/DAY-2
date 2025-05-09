@@ -133,6 +133,14 @@ export async function GET(req: NextRequest) {
           creatorCoins = validCoins.filter(coin => 
             coin.creatorAddress?.toLowerCase() === userAddress.toLowerCase()
           );
+          
+          console.log(`Found ${creatorCoins.length} creator coins for ${cleanHandle}`);
+          
+          // Use mock data if no creator coins were found
+          if (creatorCoins.length === 0) {
+            console.log(`No creator coins found for ${cleanHandle}, using mock data`);
+            creatorCoins = getCreatorMockCoins();
+          }
         } else {
           // Fallback to mock data if API response doesn't have the expected structure
           console.log("API response doesn't contain coin balances, using mock data");
