@@ -32,9 +32,9 @@ export default function RewardsTestPage() {
       const data = await response.json();
       console.log('API response:', data);
       setResults(data);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to fetch rewards:', err);
-      setError(err.message || 'An error occurred');
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
