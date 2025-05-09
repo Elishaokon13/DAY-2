@@ -1,24 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// GraphQL query to get creator coins and related data
+// Updated GraphQL query to match Zora's API schema
 const CREATOR_COINS_QUERY = `
 query GetCreatorCoins($creator: String!) {
-  tokens(
-    where: {
-      creator: $creator
-    },
-    networks: [ZORA_MAINNET, BASE_MAINNET]
-  ) {
-    nodes {
-      address
-      name
-      symbol
-      totalVolume
-      volume24h
-      uniqueHolders
-      creatorAddress
-      createdAt
-      network
+  zora {
+    tokens(
+      where: {
+        creator: $creator
+      },
+      networks: [ZORA_MAINNET, BASE_MAINNET]
+    ) {
+      nodes {
+        address
+        name
+        symbol
+        totalVolume
+        volume24h
+        uniqueHolders
+        creatorAddress
+        createdAt
+        network
+      }
+    }
+  }
+}
+`;
+
+// Alternative query if above doesn't work
+const ALTERNATIVE_QUERY = `
+query GetCreatorCoins($creator: String!) {
+  zora {
+    searchTokens(
+      filter: {
+        creator: $creator
+      }
+    ) {
+      nodes {
+        address
+        name
+        symbol
+        totalVolume
+        volume24h
+        uniqueHolders
+        creatorAddress
+        createdAt
+        network
+      }
     }
   }
 }
@@ -34,12 +61,11 @@ export async function POST(req: NextRequest) {
     
     console.log(`Fetching creator coins directly from GraphQL API for: ${creator}`);
     
-    // Make the GraphQL request directly to Zora's API
+    // Try the first query
     const response = await fetch('https://api.zora.co/universal/graphql', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Note: We're not including an Authorization header here - will try public access first
       },
       body: JSON.stringify({
         query: CREATOR_COINS_QUERY,
@@ -47,19 +73,36 @@ export async function POST(req: NextRequest) {
       })
     });
     
-    if (!response.ok) {
-      throw new Error(`Zora GraphQL API error: ${response.status} ${response.statusText}`);
+    let data = await response.json();
+    
+    // If first query fails, try the alternative
+    if (data.errors) {
+      console.log('First query failed, trying alternative query...');
+      const altResponse = await fetch('https://api.zora.co/universal/graphql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: ALTERNATIVE_QUERY,
+          variables: { creator }
+        })
+      });
+      
+      data = await altResponse.json();
     }
     
-    const data = await response.json();
     console.log('GraphQL API response:', JSON.stringify(data, null, 2));
     
     if (data.errors) {
-      return NextResponse.json({ error: data.errors[0].message }, { status: 500 });
+      return NextResponse.json({ 
+        error: data.errors[0].message,
+        allErrors: data.errors 
+      }, { status: 500 });
     }
     
     // Process the tokens and calculate earnings
-    const tokens = data.data?.tokens?.nodes || [];
+    const tokens = data.data?.zora?.tokens?.nodes || data.data?.zora?.searchTokens?.nodes || [];
     let totalEarnings = 0;
     let totalVolume = 0;
     
