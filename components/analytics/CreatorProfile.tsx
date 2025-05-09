@@ -57,7 +57,7 @@ export function CreatorProfile({ handle }: CreatorProfileProps) {
     return (
       <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700 animate-pulse mb-6">
         <div className="flex items-center space-x-4">
-          <div className="h-16 w-16 bg-gray-700 rounded-full"></div>
+          <div className="h-20 w-20 bg-gray-700 rounded-full shadow-lg flex-shrink-0"></div>
           <div className="space-y-2 flex-1">
             <div className="h-5 bg-gray-700 rounded w-32"></div>
             <div className="h-4 bg-gray-700 rounded w-48"></div>
