@@ -4,6 +4,31 @@ import { createPublicClient, http } from 'viem';
 import { base, zora } from 'viem/chains';
 import { getProfile } from '@zoralabs/coins-sdk';
 
+// Helper function to serialize BigInt values to strings
+function serializeBigInt(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  
+  if (typeof obj === 'bigint') {
+    return obj.toString();
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(serializeBigInt);
+  }
+  
+  if (typeof obj === 'object') {
+    const result: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[key] = serializeBigInt(value);
+    }
+    return result;
+  }
+  
+  return obj;
+}
+
 export async function GET(req: NextRequest) {
   const address = req.nextUrl.searchParams.get('address');
   const handle = req.nextUrl.searchParams.get('handle');
@@ -85,6 +110,10 @@ export async function GET(req: NextRequest) {
     const totalEthRoyalties = ethRoyaltiesBase + ethRoyaltiesZora;
     const totalEarnings = totalProtocolRewards + totalEthRoyalties;
 
+    // Serialize the raw data to handle BigInt values
+    const serializedBaseRewards = serializeBigInt(baseRewards);
+    const serializedZoraRewards = serializeBigInt(zoraRewards);
+
     return NextResponse.json({
       profile: profileData,
       address: creatorAddress,
@@ -105,8 +134,8 @@ export async function GET(req: NextRequest) {
         }
       },
       rawData: {
-        base: baseRewards,
-        zora: zoraRewards
+        base: serializedBaseRewards,
+        zora: serializedZoraRewards
       }
     }, { status: 200 });
   } catch (error) {
