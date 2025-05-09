@@ -66,7 +66,8 @@ function generateMockTimelineData(period: number, totalVolume: number = 5000, co
     totalEarnings: totalVolume * 0.05,
     name: coinName,
     symbol: coinSymbol,
-    timeline: timelineData
+    timeline: timelineData,
+    _isMockData: true
   };
 }
 
@@ -74,6 +75,7 @@ export async function GET(req: NextRequest) {
   const coinAddress = req.nextUrl.searchParams.get('coinAddress') || req.nextUrl.searchParams.get('address');
   const period = req.nextUrl.searchParams.get('period') || '30'; // default to 30 days
   const useMockData = req.nextUrl.searchParams.get('mock') === 'true';
+  const forceTruthData = req.nextUrl.searchParams.get('mock') === 'false';
   
   if (!coinAddress) {
     return NextResponse.json({ error: 'Missing coin address' }, { status: 400 });
@@ -87,11 +89,14 @@ export async function GET(req: NextRequest) {
     }, { status: 400 });
   }
 
-  // Always use mock data for development/demo purposes
-  const forceMockData = useMockData || false;
+  // Determine whether to use mock data
+  // - If mock=false is specified, never use mock data (return empty results instead)
+  // - If mock=true is specified, always use mock data
+  // - Otherwise, use mock data as fallback when real data is unavailable
+  const shouldUseMockData = useMockData || (!forceTruthData);
 
-  if (forceMockData) {
-    console.log(`Using mock data for earnings timeline for coin ${coinAddress}`);
+  if (useMockData) {
+    console.log(`Using mock data for earnings timeline for coin ${coinAddress} as requested`);
     const mockData = generateMockTimelineData(periodDays);
     return NextResponse.json({
       address: coinAddress,
@@ -109,12 +114,28 @@ export async function GET(req: NextRequest) {
     const coin = coinResponse.data?.zora20Token;
     
     if (!coin) {
-      console.log(`Coin not found: ${coinAddress}, using mock data`);
-      const mockData = generateMockTimelineData(periodDays);
-      return NextResponse.json({
-        address: coinAddress,
-        ...mockData
-      }, { status: 200 });
+      console.log(`Coin not found: ${coinAddress}`);
+      
+      if (forceTruthData) {
+        return NextResponse.json({
+          error: 'Coin not found',
+          _isMockData: false
+        }, { status: 404 });
+      }
+      
+      if (shouldUseMockData) {
+        console.log(`Using mock data since coin ${coinAddress} not found`);
+        const mockData = generateMockTimelineData(periodDays);
+        return NextResponse.json({
+          address: coinAddress,
+          ...mockData
+        }, { status: 200 });
+      } else {
+        return NextResponse.json({
+          error: 'Coin not found',
+          _isMockData: false
+        }, { status: 404 });
+      }
     }
 
     // Get total volume and creation date
@@ -129,8 +150,26 @@ export async function GET(req: NextRequest) {
     
     // In case the coin is newer than the requested period
     const actualPeriod = Math.min(periodDays, daysSinceCreation + 1);
+
+    // We don't have real historical data, so we need to generate synthetic data
+    // If mock=false is specified, return an empty result or error
+    if (forceTruthData) {
+      console.log(`Real historical data not available and mock=false specified for ${coinAddress}`);
+      return NextResponse.json({
+        address: coinAddress,
+        name: coin.name,
+        symbol: coin.symbol,
+        period: actualPeriod,
+        totalVolume,
+        totalEarnings: totalVolume * 0.05,
+        _isMockData: false,
+        timeline: [],
+        message: 'Real historical data is not available'
+      }, { status: 200 });
+    }
     
     // Generate the timeline data
+    console.log(`Generating synthetic data for ${coinAddress} as real historical data is not available`);
     const timelineData = generateMockTimelineData(
       actualPeriod,
       totalVolume,
@@ -153,12 +192,30 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error('Error generating earnings timeline:', error);
+    
+    if (forceTruthData) {
+      return NextResponse.json({ 
+        error: 'Failed to fetch earnings timeline',
+        details: error instanceof Error ? error.message : String(error),
+        _isMockData: false
+      }, { status: 500 });
+    }
+    
     // Return mock data on error for demo purposes
-    const mockData = generateMockTimelineData(periodDays);
-    return NextResponse.json({
-      address: coinAddress,
-      ...mockData
-    }, { status: 200 });
+    if (shouldUseMockData) {
+      console.log('Using mock data due to error');
+      const mockData = generateMockTimelineData(periodDays);
+      return NextResponse.json({
+        address: coinAddress,
+        ...mockData
+      }, { status: 200 });
+    } else {
+      return NextResponse.json({ 
+        error: 'Failed to fetch earnings timeline',
+        details: error instanceof Error ? error.message : String(error),
+        _isMockData: false
+      }, { status: 500 });
+    }
   }
 }
 
@@ -178,5 +235,6 @@ export type EarningsTimelineResponse = {
   totalVolume: number;
   totalEarnings: number;
   timeline: TimelineDataPoint[];
-  note: string;
+  note?: string;
+  _isMockData?: boolean;
 } 
