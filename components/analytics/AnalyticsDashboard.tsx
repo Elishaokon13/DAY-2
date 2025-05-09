@@ -132,7 +132,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
         <h2 className="text-2xl font-mono text-lime-500">Creator Analytics</h2>
         {onBack && (
           <Button 
-          
+            className="bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400 py-4 px-4 font-mono tracking-wider transition-colors duration-300"
             variant="outline"
             size="sm"
             onClick={onBack}
