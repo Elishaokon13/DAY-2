@@ -9,38 +9,63 @@ interface EarningsSummaryProps {
 }
 
 export function EarningsSummary({ handle }: EarningsSummaryProps) {
-  const [earnings, setEarnings] = useState<CreatorEarningsResponse | null>(null);
+  const [metricsData, setMetricsData] = useState<CreatorEarningsResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchEarnings() {
+    async function fetchMetricsData() {
       if (!handle) return;
 
       setLoading(true);
       setError(null);
       
       try {
+        console.log(`EarningsSummary: Fetching creator earnings for ${handle}`);
         const response = await fetch(`/api/creator-earnings?handle=${encodeURIComponent(handle)}`);
         
         if (!response.ok) {
-          throw new Error(`Error fetching earnings: ${response.statusText}`);
+          throw new Error(`Error fetching metrics data: ${response.statusText}`);
         }
         
         const data = await response.json();
-        setEarnings(data);
+        console.log(`EarningsSummary: Data received:`, data);
+        setMetricsData(data);
       } catch (err) {
-        console.error('Failed to fetch earnings data:', err);
-        setError('Failed to load earnings data. Please try again.');
+        console.error('Failed to fetch metrics data:', err);
+        setError('Failed to load metrics data');
       } finally {
         setLoading(false);
       }
     }
     
-    fetchEarnings();
+    fetchMetricsData();
   }, [handle]);
 
-  // Helper function to format currency
+  if (loading) {
+    return (
+      <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700 animate-pulse">
+        <div className="h-8 bg-gray-700 rounded w-1/3 mb-6"></div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="h-24 bg-gray-700 rounded"></div>
+          <div className="h-24 bg-gray-700 rounded"></div>
+          <div className="h-24 bg-gray-700 rounded"></div>
+          <div className="h-24 bg-gray-700 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !metricsData) {
+    console.error('EarningsSummary: Error or no data:', error, metricsData);
+    return (
+      <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700">
+        <p className="text-red-500">Failed to load earnings data.</p>
+      </div>
+    );
+  }
+
+  // Format numbers for display
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -50,27 +75,12 @@ export function EarningsSummary({ handle }: EarningsSummaryProps) {
     }).format(value);
   };
 
-  if (loading) {
-    return (
-      <div className="p-6 bg-[#1a1e2e] rounded-lg border border-gray-700 animate-pulse">
-        <div className="h-4 bg-gray-700 rounded w-1/3 mb-4"></div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="h-10 bg-gray-700 rounded"></div>
-          <div className="h-10 bg-gray-700 rounded"></div>
-          <div className="h-10 bg-gray-700 rounded"></div>
-          <div className="h-10 bg-gray-700 rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !earnings) {
-    return (
-      <div className="p-6 bg-[#1a1e2e] rounded-lg border border-red-700 text-red-500">
-        <p>{error || 'No earnings data available'}</p>
-      </div>
-    );
-  }
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value);
+  };
 
   return (
     <Card className="p-6 bg-[#1a1e2e] border border-gray-700">
@@ -79,31 +89,31 @@ export function EarningsSummary({ handle }: EarningsSummaryProps) {
       <div className="grid grid-cols-2 gap-6">
         <div className="border-b border-gray-700 pb-2">
           <p className="text-gray-400 font-mono text-sm">TOTAL EARNINGS</p>
-          <p className="text-white text-2xl font-mono">{formatCurrency(earnings.metrics.totalEarnings)}</p>
+          <p className="text-white text-2xl font-mono">{formatCurrency(metricsData.metrics.totalEarnings)}</p>
         </div>
         
         <div className="border-b border-gray-700 pb-2">
           <p className="text-gray-400 font-mono text-sm">TRADING VOLUME</p>
-          <p className="text-white text-2xl font-mono">{formatCurrency(earnings.metrics.totalVolume)}</p>
+          <p className="text-white text-2xl font-mono">{formatCurrency(metricsData.metrics.totalVolume)}</p>
         </div>
         
         <div className="border-b border-gray-700 pb-2">
           <p className="text-gray-400 font-mono text-sm">POSTS</p>
-          <p className="text-white text-2xl font-mono">{earnings.metrics.posts}</p>
+          <p className="text-white text-2xl font-mono">{formatNumber(metricsData.metrics.posts)}</p>
         </div>
         
         <div className="border-b border-gray-700 pb-2">
           <p className="text-gray-400 font-mono text-sm">AVG PER POST</p>
-          <p className="text-white text-2xl font-mono">{formatCurrency(earnings.metrics.avgEarningsPerPost)}</p>
+          <p className="text-white text-2xl font-mono">{formatCurrency(metricsData.metrics.avgEarningsPerPost)}</p>
         </div>
       </div>
       
-      {earnings.createdCoins.length > 0 && (
+      {metricsData.createdCoins.length > 0 && (
         <div className="mt-6">
           <h3 className="text-gray-400 font-mono text-sm mb-3">TOP EARNING POSTS</h3>
           
           <div className="space-y-2">
-            {earnings.createdCoins
+            {metricsData.createdCoins
               .sort((a, b) => parseFloat(b.totalVolume) - parseFloat(a.totalVolume))
               .slice(0, 3)
               .map((coin) => (
