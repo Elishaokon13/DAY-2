@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Always use mock data for development/demo purposes
-  const forceMockData = useMockData || true;
+  const forceMockData = useMockData || false;
 
   if (forceMockData) {
     console.log(`Using mock data for collector stats for coin ${coinAddress}`);
