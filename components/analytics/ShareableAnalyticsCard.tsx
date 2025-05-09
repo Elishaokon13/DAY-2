@@ -18,10 +18,12 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
   const [collectorStats, setCollectorStats] = useState<any>(null);
   const [shareStatus, setShareStatus] = useState<'idle' | 'capturing' | 'uploading' | 'ready' | 'sharing' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [imgError, setImgError] = useState<boolean>(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   // Fetch creator profile and earnings data
   useEffect(() => {
+    let isMounted = true;
     async function fetchProfileData() {
       if (!handle) return;
       
@@ -38,21 +40,34 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
         
         const data = await response.json();
         console.log(`ShareableAnalyticsCard: Data received:`, data);
-        setProfileData(data);
         
-        // If there are created coins, fetch collector stats for the first one
-        if (data.createdCoins && data.createdCoins.length > 0) {
-          fetchCollectorStats(data.createdCoins[0].address);
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setProfileData(data);
+          
+          // If there are created coins, fetch collector stats for the first one
+          if (data.createdCoins && data.createdCoins.length > 0) {
+            fetchCollectorStats(data.createdCoins[0].address);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch profile data:', err);
-        setError('Failed to load profile data');
+        if (isMounted) {
+          setError('Failed to load profile data');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
     
     fetchProfileData();
+    
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
   }, [handle]);
 
   // Fetch collector stats data
@@ -70,6 +85,7 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
     } catch (err) {
       console.error('Failed to fetch collector stats:', err);
       // Don't set an error state here, just log the error
+      // We'll use fallback values for the chart
     }
   };
 
@@ -85,6 +101,12 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(value);
+  };
+
+  // Handle image error
+  const handleImageError = () => {
+    console.log('Image failed to load, using fallback');
+    setImgError(true);
   };
 
   // Download the card as an image
@@ -144,7 +166,7 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ 
-          displayName: profileData.displayName,
+          displayName: profileData.displayName || handle,
           imageData: dataUrl 
         }),
       });
@@ -194,7 +216,7 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ 
-          displayName: profileData.displayName,
+          displayName: profileData.displayName || handle,
           imageData: dataUrl 
         }),
       });
@@ -307,26 +329,27 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
         
         {/* Profile section */}
         <div className="flex items-start space-x-4 mb-6">
-          {profileData.profileImage ? (
+          {profileData.profileImage && !imgError ? (
             <div className="h-16 w-16 rounded-full overflow-hidden relative border-2 border-lime-500/30 shadow-lg shadow-lime-500/10 flex-shrink-0">
               <Image 
                 src={profileData.profileImage} 
-                alt={profileData.displayName} 
+                alt={profileData.displayName || handle} 
                 fill
                 sizes="64px"
                 className="object-cover rounded-full"
+                onError={handleImageError}
               />
             </div>
           ) : (
             <div className="h-16 w-16 rounded-full bg-lime-900/20 flex items-center justify-center border-2 border-lime-500/30 shadow-lg shadow-lime-500/10 flex-shrink-0">
               <span className="text-lime-500 text-xl font-bold">
-                {profileData.displayName?.charAt(0)?.toUpperCase() || 'Z'}
+                {(profileData.displayName || handle)?.charAt(0)?.toUpperCase() || 'Z'}
               </span>
             </div>
           )}
           
           <div>
-            <h2 className="text-xl text-white font-bold">{profileData.displayName}</h2>
+            <h2 className="text-xl text-white font-bold">{profileData.displayName || handle}</h2>
             <p className="text-gray-400 text-sm">@{profileData.profileHandle || handle}</p>
           </div>
         </div>
