@@ -81,6 +81,11 @@ export async function GET(req: NextRequest) {
         // Process each balance
         const pageBalances = edges.map(edge => {
           const nodeData = edge.node;
+          // Use case-insensitive comparison for creator address
+          const creatorAddress = nodeData.coin?.creatorAddress?.toLowerCase();
+          const userWalletAddress = profile.publicWallet?.walletAddress?.toLowerCase();
+          const isCreator = creatorAddress && userWalletAddress && creatorAddress === userWalletAddress;
+          
           return {
             id: nodeData.id,
             coin: {
@@ -94,7 +99,7 @@ export async function GET(req: NextRequest) {
             },
             balance: nodeData.balance,
             formattedBalance: parseFloat(nodeData.balance) / 1e18,
-            isCreator: nodeData.coin?.creatorAddress === profile.publicWallet?.walletAddress
+            isCreator: isCreator
           };
         });
         
@@ -124,6 +129,11 @@ export async function GET(req: NextRequest) {
       // Process each balance
       allBalances = edges.map(edge => {
         const nodeData = edge.node;
+        // Use case-insensitive comparison for creator address
+        const creatorAddress = nodeData.coin?.creatorAddress?.toLowerCase();
+        const userWalletAddress = profile.publicWallet?.walletAddress?.toLowerCase();
+        const isCreator = creatorAddress && userWalletAddress && creatorAddress === userWalletAddress;
+        
         return {
           id: nodeData.id,
           coin: {
@@ -137,7 +147,7 @@ export async function GET(req: NextRequest) {
           },
           balance: nodeData.balance,
           formattedBalance: parseFloat(nodeData.balance) / 1e18,
-          isCreator: nodeData.coin?.creatorAddress === profile.publicWallet?.walletAddress
+          isCreator: isCreator
         };
       });
       
