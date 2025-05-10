@@ -138,7 +138,7 @@ export function ZoraWalletInput({ displayName, onHandleChange, onViewAnalytics }
                       disabled={loading || !validateHandle(handle)}
                       className="flex-1 bg-black border border-gray-700 hover:border-lime-300 text-gray-500 py-4 font-mono tracking-wider transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {loading ? 'CHECKING...' : 'SEARCH TOKENS'}
+                      {loading ? 'CHECKING...' : 'GENE'}
                     </button>
                     
                     {onViewAnalytics && (
