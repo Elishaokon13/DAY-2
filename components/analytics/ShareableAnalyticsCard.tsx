@@ -2,20 +2,59 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { CreatorEarningsResponse } from '@/app/api/creator-earnings/route';
 import * as htmlToImage from 'html-to-image';
 import { Button } from '../ui/button';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+
+// Define new API response type
+interface AnalyticsResults {
+  profile: {
+    handle: string;
+    displayName?: string;
+    bio?: string;
+    avatar?: string;
+    publicWallet?: string;
+  };
+  metrics: {
+    totalEarnings: number;
+    totalVolume: number;
+    posts: number;
+    averageEarningsPerPost: number;
+  };
+  coins: {
+    created: {
+      count: number;
+      items: Array<{
+        name: string;
+        symbol: string;
+        address: string;
+        balance: number;
+        uniqueHolders: number;
+        totalVolume: number;
+        estimatedEarnings: number;
+      }>;
+    };
+    collected: {
+      count: number;
+      items: Array<any>;
+    };
+  };
+  holderVsTrader: {
+    totalHolders: number;
+    estimatedCollectors: number;
+    estimatedTraders: number;
+    coinBreakdown: any[];
+  };
+}
 
 interface ShareableAnalyticsCardProps {
   handle: string;
 }
 
 export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) {
-  const [profileData, setProfileData] = useState<CreatorEarningsResponse | null>(null);
+  const [profileData, setProfileData] = useState<AnalyticsResults | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [collectorStats, setCollectorStats] = useState<any>(null);
   const [shareStatus, setShareStatus] = useState<'idle' | 'capturing' | 'uploading' | 'ready' | 'sharing' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [imgError, setImgError] = useState<boolean>(false);
@@ -32,7 +71,7 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
       
       try {
         console.log(`ShareableAnalyticsCard: Fetching profile for ${handle}`);
-        const response = await fetch(`/api/creator-earnings?handle=${encodeURIComponent(handle)}`);
+        const response = await fetch(`/api/creator-analytics?identifier=${encodeURIComponent(handle)}&fetchAll=true`);
         
         if (!response.ok) {
           throw new Error(`Error fetching profile data: ${response.statusText}`);
@@ -44,11 +83,6 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
         // Only update state if component is still mounted
         if (isMounted) {
           setProfileData(data);
-          
-          // If there are created coins, fetch collector stats for the first one
-          if (data.createdCoins && data.createdCoins.length > 0) {
-            fetchCollectorStats(data.createdCoins[0].address);
-          }
         }
       } catch (err) {
         console.error('Failed to fetch profile data:', err);
@@ -69,25 +103,6 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
       isMounted = false;
     };
   }, [handle]);
-
-  // Fetch collector stats data
-  const fetchCollectorStats = async (coinAddress: string) => {
-    try {
-      const response = await fetch(`/api/collector-stats?address=${coinAddress}`);
-      
-      if (!response.ok) {
-        throw new Error(`Error fetching collector stats: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      console.log('Collector stats data:', data);
-      setCollectorStats(data);
-    } catch (err) {
-      console.error('Failed to fetch collector stats:', err);
-      // Don't set an error state here, just log the error
-      // We'll use fallback values for the chart
-    }
-  };
 
   // Format currency for display
   const formatCurrency = (value: number) => {
@@ -166,7 +181,7 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ 
-          displayName: profileData.displayName || handle,
+          displayName: profileData.profile.displayName || handle,
           imageData: dataUrl 
         }),
       });
@@ -216,7 +231,7 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ 
-          displayName: profileData.displayName || handle,
+          displayName: profileData.profile.displayName || handle,
           imageData: dataUrl 
         }),
       });
@@ -306,13 +321,13 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
   const COLORS = ['#10B981', '#6366F1'];
   
   // Default to reasonable values if collector stats aren't available
-  const collectorsPercentage = typeof collectorStats?.collectors?.percentage === 'object' 
-    ? (collectorStats?.collectors?.percentage?.percentage || 75) 
-    : (collectorStats?.collectors?.percentage ?? 75);
+  const collectorsPercentage = typeof profileData.holderVsTrader?.coinBreakdown?.percentage === 'object' 
+    ? (profileData.holderVsTrader.coinBreakdown[0].percentage || 75) 
+    : (profileData.holderVsTrader.coinBreakdown[0].percentage ?? 75);
     
-  const tradersPercentage = typeof collectorStats?.traders?.percentage === 'object'
-    ? (collectorStats?.traders?.percentage?.percentage || 25)
-    : (collectorStats?.traders?.percentage ?? 25);
+  const tradersPercentage = typeof profileData.holderVsTrader?.coinBreakdown?.percentage === 'object'
+    ? (profileData.holderVsTrader.coinBreakdown[1].percentage || 25)
+    : (profileData.holderVsTrader.coinBreakdown[1].percentage ?? 25);
   
   const chartData = [
     { name: 'Collectors', value: typeof collectorsPercentage === 'object' ? 75 : collectorsPercentage },
@@ -334,11 +349,11 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
         
         {/* Profile section */}
         <div className="flex items-start space-x-4 mb-6">
-          {profileData.profileImage && !imgError ? (
+          {profileData.profile.avatar && !imgError ? (
             <div className="h-16 w-16 rounded-full overflow-hidden relative border-2 border-lime-500/30 shadow-lg shadow-lime-500/10 flex-shrink-0">
               <Image 
-                src={profileData.profileImage} 
-                alt={profileData.displayName || handle} 
+                src={profileData.profile.avatar} 
+                alt={profileData.profile.displayName || handle} 
                 fill
                 sizes="64px"
                 className="object-cover rounded-full"
@@ -348,14 +363,14 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
           ) : (
             <div className="h-16 w-16 rounded-full bg-lime-900/20 flex items-center justify-center border-2 border-lime-500/30 shadow-lg shadow-lime-500/10 flex-shrink-0">
               <span className="text-lime-500 text-xl font-bold">
-                {(profileData.displayName || handle)?.charAt(0)?.toUpperCase() || 'Z'}
+                {(profileData.profile.displayName || handle)?.charAt(0)?.toUpperCase() || 'Z'}
               </span>
             </div>
           )}
           
           <div>
-            <h2 className="text-xl text-white font-bold">{profileData.displayName || handle}</h2>
-            <p className="text-gray-400 text-sm">@{profileData.profileHandle || handle}</p>
+            <h2 className="text-xl text-white font-bold">{profileData.profile.displayName || handle}</h2>
+            <p className="text-gray-400 text-sm">@{profileData.profile.handle || handle}</p>
           </div>
         </div>
         
