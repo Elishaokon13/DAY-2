@@ -1,0 +1,18 @@
+{
+  "buildCommand": "npm run build:prod",
+  "ignoreCommand": "next lint --quiet",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "s-maxage=60, stale-while-revalidate=300"
+        }
+      ]
+    }
+  ],
+  "github": {
+    "silent": true
+  }
+} 
