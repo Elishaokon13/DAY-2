@@ -70,6 +70,13 @@ export async function GET(req: NextRequest) {
     let allBalances: any[] = [];
     let cursor = undefined;
     
+    // Check if Zora-generated wallet is available in the profile
+    const generatedWallet = profile.address?.toLowerCase();
+    const publicWallet = profile.publicWallet?.walletAddress?.toLowerCase();
+    
+    console.log(`User's public wallet: ${publicWallet}`);
+    console.log(`User's Zora-generated wallet: ${generatedWallet}`);
+    
     do {
       const balancesRes = await getProfileBalances({
         identifier,
@@ -88,8 +95,18 @@ export async function GET(req: NextRequest) {
         const nodeData = edge.node;
         // Use case-insensitive comparison for creator address
         const creatorAddress = nodeData.coin?.creatorAddress?.toLowerCase();
-        const userWalletAddress = profile.publicWallet?.walletAddress?.toLowerCase();
-        const isCreator = creatorAddress && userWalletAddress && creatorAddress === userWalletAddress;
+        
+        // Check if creator address matches either public wallet or Zora-generated wallet
+        const isCreatorPublic = creatorAddress && publicWallet && creatorAddress === publicWallet;
+        const isCreatorGenerated = creatorAddress && generatedWallet && creatorAddress === generatedWallet;
+        const isCreator = isCreatorPublic || isCreatorGenerated;
+        
+        // Add debug info to help diagnose
+        console.log(`Coin: ${nodeData.coin?.name} (${nodeData.coin?.symbol})`);
+        console.log(`Creator address: ${creatorAddress}`);
+        console.log(`Is creator (public wallet): ${isCreatorPublic}`);
+        console.log(`Is creator (generated wallet): ${isCreatorGenerated}`);
+        console.log(`Final is creator: ${isCreator}`);
         
         return {
           id: nodeData.id,
@@ -104,7 +121,14 @@ export async function GET(req: NextRequest) {
           },
           balance: nodeData.balance,
           formattedBalance: parseFloat(nodeData.balance) / 1e18,
-          isCreator: isCreator
+          isCreator: isCreator,
+          creatorMatchDetails: {
+            creatorAddress,
+            publicWallet,
+            generatedWallet,
+            matchesPublic: isCreatorPublic,
+            matchesGenerated: isCreatorGenerated
+          }
         };
       });
       
