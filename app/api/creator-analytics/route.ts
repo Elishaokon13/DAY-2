@@ -99,17 +99,13 @@ export async function GET(req: NextRequest) {
         // Use case-insensitive comparison for creator address
         const creatorAddress = nodeData.coin?.creatorAddress?.toLowerCase();
         
-        // Check if creator address matches either public wallet or Zora-generated wallet
-        const isCreatorPublic = creatorAddress && publicWallet && creatorAddress === publicWallet;
-        const isCreatorGenerated = creatorAddress && generatedWallet && creatorAddress === generatedWallet;
-        const isCreator = isCreatorPublic || isCreatorGenerated;
+        // For now, only check against the public wallet
+        const isCreator = creatorAddress && publicWallet && creatorAddress === publicWallet;
         
         // Add debug info to help diagnose
         console.log(`Coin: ${nodeData.coin?.name} (${nodeData.coin?.symbol})`);
         console.log(`Creator address: ${creatorAddress}`);
-        console.log(`Is creator (public wallet): ${isCreatorPublic}`);
-        console.log(`Is creator (generated wallet): ${isCreatorGenerated}`);
-        console.log(`Final is creator: ${isCreator}`);
+        console.log(`Is creator (public wallet): ${isCreator}`);
         
         return {
           id: nodeData.id,
@@ -128,9 +124,7 @@ export async function GET(req: NextRequest) {
           creatorMatchDetails: {
             creatorAddress,
             publicWallet,
-            generatedWallet,
-            matchesPublic: isCreatorPublic,
-            matchesGenerated: isCreatorGenerated
+            matchesPublic: isCreator
           }
         };
       });
