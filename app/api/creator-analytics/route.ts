@@ -91,6 +91,50 @@ export async function GET(req: NextRequest) {
       console.log(`Using known Zora-generated wallet for ${profile.handle}: ${zoraGeneratedWallet}`);
     }
     
+    // Fetch initial balances to analyze for patterns that might indicate a Zora-generated wallet
+    if (!zoraGeneratedWallet) {
+      try {
+        console.log(`Trying to discover Zora-generated wallet for ${identifier}...`);
+        
+        const initialBalancesRes = await getProfileBalances({
+          identifier,
+          count: 20 // Fetch first few balances to analyze
+        });
+        
+        const edges = initialBalancesRes.data?.profile?.coinBalances?.edges || [];
+        
+        if (edges.length > 0) {
+          // Look for patterns in creator addresses
+          // If multiple coins have the same creator address (not matching publicWallet)
+          // it might be a Zora-generated wallet
+          const creatorAddresses = edges
+            .map(edge => edge.node.coin?.creatorAddress?.toLowerCase())
+            .filter(Boolean) as string[];
+          
+          // Count occurrences of each address
+          const addressCounts = creatorAddresses.reduce((acc: Record<string, number>, addr: string) => {
+            acc[addr] = (acc[addr] || 0) + 1;
+            return acc;
+          }, {});
+          
+          console.log('Creator address counts:', addressCounts);
+          
+          // Find addresses that appear multiple times and aren't the public wallet
+          const potentialWallets = Object.entries(addressCounts)
+            .filter(([addr, count]) => count > 2 && addr !== publicWallet)
+            .sort((a, b) => b[1] - a[1]); // Sort by count, highest first
+          
+          if (potentialWallets.length > 0) {
+            zoraGeneratedWallet = potentialWallets[0][0];
+            console.log(`Discovered potential Zora-generated wallet: ${zoraGeneratedWallet} (appeared in ${potentialWallets[0][1]} coins)`);
+          }
+        }
+      } catch (err) {
+        console.error('Error attempting to discover Zora-generated wallet:', err);
+        // Continue without a generated wallet
+      }
+    }
+    
     // Create a list of the user's wallet addresses to check against
     const userWallets = [
       publicWallet,
