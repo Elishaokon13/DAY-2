@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build:prod",
+  "buildCommand": "bash build.sh",
   "headers": [
     {
       "source": "/(.*)",
