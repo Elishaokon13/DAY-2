@@ -6,9 +6,18 @@ import { Icon } from '@/components/Icon';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { parseUnits } from 'viem';
 
+// Add Ethereum provider type
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (params: { method: string; params?: any[] }) => Promise<any>;
+    };
+  }
+}
+
 // USDC Contract details (Optimism or Base, depending on Warplet configuration)
 const USDC_CONTRACT = '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85'; // USDC on Base
-const RECEIVER_ADDRESS = '0xYourProjectWalletAddress'; // Replace with your project wallet
+const RECEIVER_ADDRESS = '0x1B958A48373109E9146A950a75F5bD25B845143b'; 
 const USDC_AMOUNT = '1.0'; // $1 USDC
 
 interface PremiumCastButtonProps {
@@ -66,18 +75,26 @@ export function PremiumCastButton({ collageId, onPaymentComplete }: PremiumCastB
       });
       
       const fromAddress = accounts[0];
+      console.log("Connected wallet address:", fromAddress);
       
       // Request transaction through Warplet
+      console.log("Sending transaction to contract:", USDC_CONTRACT);
+      console.log("Receiver address:", RECEIVER_ADDRESS);
+      
+      // Generate ERC20 transfer data
+      const transferData = generateERC20TransferData(RECEIVER_ADDRESS, amount.toString());
+      console.log("Transaction data prepared:", transferData.slice(0, 20) + "...");
+      
       const txResponse = await window.ethereum.request({
         method: 'eth_sendTransaction',
         params: [{
           from: fromAddress,
           to: USDC_CONTRACT,
-          // We'll create a simpler data payload for ERC20 transfer
-          data: `0xa9059cbb000000000000000000000000${RECEIVER_ADDRESS.replace(/^0x/, '').toLowerCase()}${amount.toString(16).padStart(64, '0')}`,
+          data: transferData,
         }],
       });
 
+      console.log("Transaction sent with hash:", txResponse);
       setTransactionHash(txResponse);
       
       // Verify payment on the server
@@ -87,12 +104,13 @@ export function PremiumCastButton({ collageId, onPaymentComplete }: PremiumCastB
         body: JSON.stringify({ 
           txHash: txResponse,
           collageId,
-          fromAddress: fromAddress,
+          fromAddress,
           amount: USDC_AMOUNT
         }),
       });
       
       const verifyData = await verifyResponse.json();
+      console.log("Payment verification response:", verifyData);
       
       if (verifyData.success) {
         setIsPaid(true);
@@ -102,11 +120,26 @@ export function PremiumCastButton({ collageId, onPaymentComplete }: PremiumCastB
       }
     } catch (err) {
       console.error('Payment failed:', err);
-      setError('Payment failed. Please try again.');
+      setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  // Helper function to generate ERC20 transfer function data
+  function generateERC20TransferData(to: string, value: string) {
+    // ERC20 transfer function signature: transfer(address,uint256)
+    const functionSelector = '0xa9059cbb'; // Function selector for 'transfer(address,uint256)'
+    
+    // Remove 0x prefix if present and ensure lowercase
+    const cleanToAddress = to.replace(/^0x/, '').toLowerCase().padStart(64, '0');
+    
+    // Convert value to hex and pad to 64 characters
+    const hexValue = BigInt(value).toString(16).padStart(64, '0');
+    
+    // Combine function signature and parameters
+    return `0x${functionSelector}${cleanToAddress}${hexValue}`;
+  }
 
   if (isPaid) {
     return (
