@@ -76,15 +76,36 @@ export async function GET(req: NextRequest) {
     // Extract the public wallet address
     const publicWallet = profile.publicWallet?.walletAddress?.toLowerCase();
     
+    // Look for a possible Zora-generated wallet address
+    // We'll need to examine connected addresses and coins to identify it
+    let zoraGeneratedWallet = null;
+    
+    // First, see if we have a known mapping
+    const knownWallets: Record<string, string> = {
+      'defidevrelalt': '0xafc833331e494d72bc6568a011f614702ca3c892',
+      // Add more mappings here as they're discovered
+    };
+    
+    if (profile.handle && knownWallets[profile.handle]) {
+      zoraGeneratedWallet = knownWallets[profile.handle].toLowerCase();
+      console.log(`Using known Zora-generated wallet for ${profile.handle}: ${zoraGeneratedWallet}`);
+    }
+    
     // Create a list of the user's wallet addresses to check against
-    // Add the known Zora-generated wallet for this user
     const userWallets = [
       publicWallet,
-      // Add the Zora-generated wallet if the user is defidevrelalt
-      identifier === 'defidevrelalt' ? '0xafc833331e494d72bc6568a011f614702ca3c892'.toLowerCase() : null
+      zoraGeneratedWallet
     ].filter(Boolean) as string[];
     
     console.log(`User's wallets to check:`, userWallets);
+    
+    // If we don't have any wallet addresses to check, we can't proceed
+    if (userWallets.length === 0) {
+      return NextResponse.json({ 
+        error: 'No wallet addresses found for this profile',
+        profile: profileData
+      }, { status: 404 });
+    }
     
     do {
       const balancesRes = await getProfileBalances({
