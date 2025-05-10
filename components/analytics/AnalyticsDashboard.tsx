@@ -385,7 +385,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
         )}
         
         {/* Coin Selector */}
-        {creatorData.coins.created.items.length > 1 && (
+        {/* {creatorData.coins.created.items.length > 1 && (
           <div className="bg-[#1a1e2e] p-4 rounded-lg border border-gray-700">
             <p className="text-gray-400 font-mono text-sm mb-2">SELECT COIN FOR DETAILED ANALYTICS</p>
             <div className="flex flex-wrap gap-2">
@@ -404,7 +404,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
               ))}
             </div>
           </div>
-        )}
+        )} */}
         
         {/* Detailed Analytics for Selected Coin */}
         {selectedCoin && (
