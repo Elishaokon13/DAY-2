@@ -71,7 +71,7 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
       
       try {
         console.log(`ShareableAnalyticsCard: Fetching profile for ${handle}`);
-        const response = await fetch(`/api/creator-analytics?identifier=${encodeURIComponent(handle)}&fetchAll=true`);
+        const response = await fetch(`/api/creator-analytics?identifier=${encodeURIComponent(handle)}&initialLoadOnly=true`);
         
         if (!response.ok) {
           throw new Error(`Error fetching profile data: ${response.statusText}`);
