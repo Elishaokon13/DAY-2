@@ -4,7 +4,7 @@ import { createPublicClient, http, decodeAbiParameters, formatUnits } from 'viem
 import { base } from 'viem/chains';
 
 // USDC Contract details
-const USDC_CONTRACT = '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85'; // USDC on Base
+const USDC_CONTRACT = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'; // Native USDC on Base
 const RECEIVER_ADDRESS = '0x1B958A48373109E9146A950a75F5bD25B845143b'; 
 const MIN_AMOUNT = '1.0'; // Minimum $1 USDC required
 
