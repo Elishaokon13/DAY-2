@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getProfile, getProfileBalances, getCoin } from '@zoralabs/coins-sdk';
 import { base } from 'viem/chains';
 
+// In-memory cache
+const CACHE = new Map<string, {
+  data: any,
+  timestamp: number
+}>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache time
+
 // Helper function to serialize BigInt values to strings
 function serializeBigInt(obj: any): any {
   if (obj === null || obj === undefined) {
@@ -27,12 +34,97 @@ function serializeBigInt(obj: any): any {
   return obj;
 }
 
+// Process balances in batches
+async function processCoinBatchesInParallel(coins: any[], batchSize = 5) {
+  const results = [];
+  const batches = [];
+  
+  // Split coins into batches
+  for (let i = 0; i < coins.length; i += batchSize) {
+    batches.push(coins.slice(i, i + batchSize));
+  }
+  
+  // Process batches in parallel
+  for (const batch of batches) {
+    const batchPromises = batch.map(async (balance) => {
+      if (!balance.coin.address) return null;
+      
+      const cacheKey = `coin_details_${balance.coin.address}`;
+      // Check if we have a cache hit
+      if (CACHE.has(cacheKey)) {
+        const cached = CACHE.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+          console.log(`Cache hit for coin ${balance.coin.name}`);
+          return {
+            ...balance,
+            details: cached.data
+          };
+        }
+      }
+      
+      try {
+        console.log(`Fetching details for coin ${balance.coin.name} (${balance.coin.address})...`);
+        const coinDetails = await getCoin({
+          address: balance.coin.address,
+          chain: base.id,
+        });
+        
+        const detailsData = coinDetails.data?.zora20Token || null;
+        
+        // Cache the result
+        CACHE.set(cacheKey, {
+          data: detailsData,
+          timestamp: Date.now()
+        });
+        
+        return {
+          ...balance,
+          details: detailsData
+        };
+      } catch (error) {
+        console.error(`Error fetching coin details for ${balance.coin.address}:`, error);
+        return {
+          ...balance,
+          details: null
+        };
+      }
+    });
+    
+    // Wait for the current batch to complete before moving to the next
+    const batchResults = await Promise.all(batchPromises);
+    results.push(...batchResults);
+  }
+  
+  return results.filter(Boolean);
+}
+
 export async function GET(req: NextRequest) {
   const identifier = req.nextUrl.searchParams.get('identifier');
   const fetchAll = req.nextUrl.searchParams.get('fetchAll') === 'true';
+  const initialLoadOnly = req.nextUrl.searchParams.get('initialLoadOnly') === 'true';
+  const limit = parseInt(req.nextUrl.searchParams.get('limit') || '25');
+  const skipCache = req.nextUrl.searchParams.get('skipCache') === 'true';
   
   if (!identifier) {
     return NextResponse.json({ error: 'Missing identifier parameter (wallet address or handle)' }, { status: 400 });
+  }
+
+  // Generate cache key based on the request parameters
+  const cacheKey = `creator_analytics_${identifier}_${fetchAll}_${initialLoadOnly}_${limit}`;
+  
+  // Check cache first
+  if (!skipCache && CACHE.has(cacheKey)) {
+    const cached = CACHE.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      console.log(`Cache hit for ${identifier}`);
+      return NextResponse.json(cached.data, { 
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+          'X-Cache': 'HIT'
+        } 
+      });
+    }
   }
 
   try {
@@ -45,9 +137,6 @@ export async function GET(req: NextRequest) {
     }
     
     const profile = profileRes.data.profile;
-    
-    // Debug the entire profile structure to find the Zora-generated wallet
-    console.log('Complete profile structure:', JSON.stringify(profile, null, 2));
     
     // Prepare profile data response
     const profileData = {
@@ -77,7 +166,6 @@ export async function GET(req: NextRequest) {
     const publicWallet = profile.publicWallet?.walletAddress?.toLowerCase();
     
     // Look for a possible Zora-generated wallet address
-    // We'll need to examine connected addresses and coins to identify it
     let zoraGeneratedWallet = null;
     
     // First, see if we have a known mapping
@@ -117,8 +205,6 @@ export async function GET(req: NextRequest) {
             return acc;
           }, {});
           
-          console.log('Creator address counts:', addressCounts);
-          
           // Find addresses that appear multiple times and aren't the public wallet
           const potentialWallets = Object.entries(addressCounts)
             .filter(([addr, count]) => count > 2 && addr !== publicWallet)
@@ -151,7 +237,17 @@ export async function GET(req: NextRequest) {
       }, { status: 404 });
     }
     
+    // Set maximum pages to fetch for initial loads to avoid long wait times
+    const maxPagesToFetch = initialLoadOnly ? 2 : (fetchAll ? 100 : 5);
+    let pagesProcessed = 0;
+    
     do {
+      // Check if we've reached the limit for this request type
+      if (pagesProcessed >= maxPagesToFetch) {
+        console.log(`Reached maximum pages (${maxPagesToFetch}) for ${initialLoadOnly ? 'initial load' : (fetchAll ? 'full load' : 'standard load')}`);
+        break;
+      }
+      
       const balancesRes = await getProfileBalances({
         identifier,
         count: 50,
@@ -173,11 +269,6 @@ export async function GET(req: NextRequest) {
         // Check if creator address matches any of the user's wallets
         const isCreator = Boolean(creatorAddress && userWallets.some(wallet => wallet === creatorAddress));
         
-        // Add debug info to help diagnose
-        console.log(`Coin: ${nodeData.coin?.name} (${nodeData.coin?.symbol})`);
-        console.log(`Creator address: ${creatorAddress}`);
-        console.log(`Is creator: ${isCreator}`);
-        
         return {
           id: nodeData.id,
           coin: {
@@ -191,30 +282,23 @@ export async function GET(req: NextRequest) {
           },
           balance: nodeData.balance,
           formattedBalance: parseFloat(nodeData.balance) / 1e18,
-          isCreator: isCreator,
-          creatorMatchDetails: {
-            creatorAddress,
-            userWallets,
-            matchDetails: userWallets.map(wallet => ({
-              wallet,
-              matches: creatorAddress === wallet
-            }))
-          }
+          isCreator: isCreator
         };
       });
       
       allBalances = [...allBalances, ...pageBalances];
+      pagesProcessed++;
       
       // Update cursor for next page
       cursor = balancesRes.data?.profile?.coinBalances?.pageInfo?.endCursor;
-      console.log(`Fetched page with ${pageBalances.length} balances, next cursor: ${cursor}`);
+      console.log(`Fetched page ${pagesProcessed} with ${pageBalances.length} balances, next cursor: ${cursor}`);
       
-      if (!cursor || !fetchAll) {
+      if (!cursor) {
         break;
       }
     } while (true);
     
-    console.log(`Fetched a total of ${allBalances.length} balances`);
+    console.log(`Fetched a total of ${allBalances.length} balances across ${pagesProcessed} pages`);
     
     // Categorize balances into created and collected
     const createdCoins = allBalances.filter(balance => balance.isCreator);
@@ -223,33 +307,17 @@ export async function GET(req: NextRequest) {
     console.log(`Created coins count: ${createdCoins.length}`);
     console.log(`Collected coins count: ${collectedCoins.length}`);
     
-    // Step 3: Get detailed data for each created coin
-    console.log('Fetching detailed data for created coins...');
-    const coinDetailsPromises = createdCoins.map(async (balance) => {
-      if (!balance.coin.address) return null;
-      
-      try {
-        console.log(`Fetching details for coin ${balance.coin.name} (${balance.coin.address})...`);
-        const coinDetails = await getCoin({
-          address: balance.coin.address,
-          chain: base.id,
-        });
-        
-        return {
-          ...balance,
-          details: coinDetails.data?.zora20Token || null
-        };
-      } catch (error) {
-        console.error(`Error fetching coin details for ${balance.coin.address}:`, error);
-        return {
-          ...balance,
-          details: null
-        };
-      }
-    });
+    // Step 3: Get detailed data for each created coin - use our batch processing
+    console.log('Fetching detailed data for created coins in parallel batches...');
     
-    const coinDetailsResults = await Promise.all(coinDetailsPromises);
-    const createdCoinsWithDetails = coinDetailsResults.filter(Boolean);
+    // Limit the number of created coins we process in detail to avoid long wait times
+    const createdCoinsToProcess = createdCoins.slice(0, limit);
+    
+    if (createdCoins.length > limit) {
+      console.log(`Processing only ${limit} of ${createdCoins.length} created coins for performance`);
+    }
+    
+    const createdCoinsWithDetails = await processCoinBatchesInParallel(createdCoinsToProcess);
     
     // Step 4: Calculate analytics metrics
     let totalEarnings = 0;
@@ -264,13 +332,13 @@ export async function GET(req: NextRequest) {
     console.log(`Initial posts count based on created coins: ${postsCount}`);
     
     // For users with a public wallet, we can attempt to fetch all created coins
-    // even if they don't hold them anymore
+    // even if they don't hold them anymore - but only if we're doing a full load
     try {
-      if (userWallets.length > 0 && fetchAll) {
+      if (userWallets.length > 0 && fetchAll && !initialLoadOnly) {
         console.log(`Fetching all coins created by wallets: ${userWallets.join(', ')}`);
         
         // Fetch coins for each wallet
-        for (const wallet of userWallets) {
+        const walletFetchPromises = userWallets.map(async (wallet) => {
           try {
             const response = await fetch(
               `https://api.zora.co/creator-coins?chainIds=8453&creator=${wallet}`, 
@@ -281,18 +349,22 @@ export async function GET(req: NextRequest) {
               const data = await response.json();
               if (data && Array.isArray(data.coins)) {
                 console.log(`Found ${data.coins.length} coins created by wallet ${wallet}`);
-                
-                // Update the count if we found more coins than we previously knew about
-                if (data.coins.length > postsCount) {
-                  console.log(`Updating post count from ${postsCount} to ${data.coins.length}`);
-                  postsCount = data.coins.length;
-                }
+                return data.coins.length;
               }
             }
+            return 0;
           } catch (err) {
             console.error(`Error fetching additional coins for wallet ${wallet}:`, err);
-            // Continue with existing count on error
+            return 0;
           }
+        });
+        
+        const coinsPerWallet = await Promise.all(walletFetchPromises);
+        const maxCoinsFound = Math.max(...coinsPerWallet, postsCount);
+        
+        if (maxCoinsFound > postsCount) {
+          console.log(`Updating post count from ${postsCount} to ${maxCoinsFound}`);
+          postsCount = maxCoinsFound;
         }
       }
     } catch (err) {
@@ -350,6 +422,9 @@ export async function GET(req: NextRequest) {
       coins: {
         created: {
           count: createdCoins.length,
+          processed: createdCoinsWithDetails.length,
+          totalCount: postsCount,
+          hasMore: createdCoins.length > createdCoinsWithDetails.length,
           items: createdCoinsWithDetails.map(coin => ({
             name: coin.coin.name,
             symbol: coin.coin.symbol,
@@ -362,7 +437,8 @@ export async function GET(req: NextRequest) {
         },
         collected: {
           count: collectedCoins.length,
-          items: collectedCoins.map(coin => ({
+          // Only return a subset of collected coins for performance
+          items: collectedCoins.slice(0, limit).map(coin => ({
             name: coin.coin.name,
             symbol: coin.coin.symbol,
             address: coin.coin.address,
@@ -376,13 +452,27 @@ export async function GET(req: NextRequest) {
         estimatedCollectors: holderTraderData.reduce((sum, coin) => sum + coin.estimatedCollectors, 0),
         estimatedTraders: holderTraderData.reduce((sum, coin) => sum + coin.estimatedTraders, 0),
         coinBreakdown: holderTraderData
+      },
+      meta: {
+        isCached: false,
+        fetchedAt: new Date().toISOString(),
+        fetchType: initialLoadOnly ? 'initial' : (fetchAll ? 'full' : 'standard'),
+        pagesProcessed,
+        limitApplied: limit
       }
     };
+    
+    // Cache the results
+    CACHE.set(cacheKey, {
+      data: analyticsData,
+      timestamp: Date.now()
+    });
     
     return NextResponse.json(analyticsData, { 
       status: 200,
       headers: {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+        'X-Cache': 'MISS'
       } 
     });
   } catch (error) {
