@@ -103,16 +103,15 @@ export default function App() {
                   <WalletDropdownDisconnect />
                 </WalletDropdown>
               </Wallet> */}
-              {viewMode === 'tokens' && (
+              {viewMode === 'analytics' && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="text-[var(--app-accent)]"
-                  onClick={() => handleViewAnalytics(zoraHandle)}
-                  disabled={!zoraHandle}
+                  onClick={handleBackToTokens}
                 >
-                  <Icon name="barChart" size="sm" className="mr-1" />
-                  Creator Analytics
+                  <Icon name="arrowLeft" size="sm" className="mr-1" />
+                  Back to Search
                 </Button>
               )}
             </div>
