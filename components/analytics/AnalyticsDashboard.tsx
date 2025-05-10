@@ -454,7 +454,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
                   className={`px-3 py-2 rounded font-mono text-sm ${
                     selectedCoin === coin.address
                       ? 'bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400'
-                      : 'b'
+                      : 'bg-lime-900/10 border border-lime-700/20 hover:bg-lime-800/20 text-lime-400'
                   }`}
                 >
                   {coin.name} ({coin.symbol})
