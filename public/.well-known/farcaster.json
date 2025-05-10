@@ -1,0 +1,35 @@
+{
+    "accountAssociation": {
+        "header": "eyJmaWQiOjc5ODg3MiwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweGIyMjZBODZFM2EyZUQwZUQwNWI0NWI4ODIxNGVCNzczN2IyN2Q4ZjAifQ",
+        "payload": "eyJkb21haW4iOiJ6b3JhLWFuYWx5dGljcy1kZW1vLnZlcmNlbC5hcHAifQ",
+        "signature": "MHhiNjEyYjBkZTcyOWMzMzY4MjNhYTc1MzhhMDQ5OTliYjk1YWJhM2VhZTIwZDA2Njg4YTBmNzBmMDZmMDhmODE1NDI1ZDU4MGUyNDAzZTQ2ZmMwOTAxZDU4NTlkOWU4Njc2NjAzODY1Yjc1NjMyMWU1NmQ5ODBhMDFhMGUwODQ3ZDFi"
+      },
+    "frame": {
+      "version": "1.0.0",
+      "name": "Zora Analytics",
+      "iconUrl": "https://zora-analytics-demo.vercel.app/logo.png",
+      "splashImageUrl": "https://zora-analytics-demo.vercel.app/splash.png",
+      "splashBackgroundColor": "#0f1121",
+      "homeUrl": "https://zora-analytics-demo.vercel.app",
+      "subtitle": "Creator earnings analytics",
+      "description": "Zora Analytics is a dashboard for tracking creator earnings across coins on Zora.",
+      "screenshotUrls": [
+        "https://zora-analytics-demo.vercel.app/screenshot1.png",
+        "https://zora-analytics-demo.vercel.app/screenshot2.png",
+        "https://zora-analytics-demo.vercel.app/screenshot3.png"
+      ],
+      "primaryCategory": "finance",
+      "tags": [
+        "zora",
+        "analytics",
+        "creator",
+        "earnings",
+        "coins"
+      ],
+      "heroImageUrl": "https://zora-analytics-demo.vercel.app/og.png",
+      "tagline": "Track your creator earnings",
+      "ogTitle": "Zora Creator Analytics",
+      "ogDescription": "Track your earnings, understand your collector base, and visualize performance over time.",
+      "ogImageUrl": "https://zora-analytics-demo.vercel.app/logo.png"
+    }
+  }
