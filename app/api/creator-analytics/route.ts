@@ -76,12 +76,15 @@ export async function GET(req: NextRequest) {
     // Extract the public wallet address
     const publicWallet = profile.publicWallet?.walletAddress?.toLowerCase();
     
-    // Get the Zora-generated wallet from the profile
-    // It might be in a different field, so log the profile structure to help identify
-    console.log('Profile structure:', JSON.stringify(profile, null, 2));
+    // Create a list of the user's wallet addresses to check against
+    // Add the known Zora-generated wallet for this user
+    const userWallets = [
+      publicWallet,
+      // Add the Zora-generated wallet if the user is defidevrelalt
+      identifier === 'defidevrelalt' ? '0xafc833331e494d72bc6568a011f614702ca3c892'.toLowerCase() : null
+    ].filter(Boolean) as string[];
     
-    // For now, use only the public wallet and add proper extraction after seeing the structure
-    console.log(`User's public wallet: ${publicWallet}`);
+    console.log(`User's wallets to check:`, userWallets);
     
     do {
       const balancesRes = await getProfileBalances({
@@ -102,13 +105,13 @@ export async function GET(req: NextRequest) {
         // Use case-insensitive comparison for creator address
         const creatorAddress = nodeData.coin?.creatorAddress?.toLowerCase();
         
-        // For now, only check against the public wallet
-        const isCreator = creatorAddress && publicWallet && creatorAddress === publicWallet;
+        // Check if creator address matches any of the user's wallets
+        const isCreator = Boolean(creatorAddress && userWallets.some(wallet => wallet === creatorAddress));
         
         // Add debug info to help diagnose
         console.log(`Coin: ${nodeData.coin?.name} (${nodeData.coin?.symbol})`);
         console.log(`Creator address: ${creatorAddress}`);
-        console.log(`Is creator (public wallet): ${isCreator}`);
+        console.log(`Is creator: ${isCreator}`);
         
         return {
           id: nodeData.id,
@@ -126,8 +129,11 @@ export async function GET(req: NextRequest) {
           isCreator: isCreator,
           creatorMatchDetails: {
             creatorAddress,
-            publicWallet,
-            matchesPublic: isCreator
+            userWallets,
+            matchDetails: userWallets.map(wallet => ({
+              wallet,
+              matches: creatorAddress === wallet
+            }))
           }
         };
       });
