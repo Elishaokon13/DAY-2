@@ -46,6 +46,9 @@ export async function GET(req: NextRequest) {
     
     const profile = profileRes.data.profile;
     
+    // Debug the entire profile structure to find the Zora-generated wallet
+    console.log('Complete profile structure:', JSON.stringify(profile, null, 2));
+    
     // Prepare profile data response
     const profileData = {
       handle: profile.handle,
