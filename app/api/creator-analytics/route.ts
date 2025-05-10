@@ -70,12 +70,15 @@ export async function GET(req: NextRequest) {
     let allBalances: any[] = [];
     let cursor = undefined;
     
-    // Check if Zora-generated wallet is available in the profile
-    const generatedWallet = profile.address?.toLowerCase();
+    // Extract the public wallet address
     const publicWallet = profile.publicWallet?.walletAddress?.toLowerCase();
     
+    // Get the Zora-generated wallet from the profile
+    // It might be in a different field, so log the profile structure to help identify
+    console.log('Profile structure:', JSON.stringify(profile, null, 2));
+    
+    // For now, use only the public wallet and add proper extraction after seeing the structure
     console.log(`User's public wallet: ${publicWallet}`);
-    console.log(`User's Zora-generated wallet: ${generatedWallet}`);
     
     do {
       const balancesRes = await getProfileBalances({
