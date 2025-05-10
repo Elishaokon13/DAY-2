@@ -5,9 +5,55 @@ import { EarningsSummary } from './EarningsSummary';
 import { UserStats } from './UserStats';
 import { TimelineChart } from './TimelineChart';
 import { Button } from '../ui/button';
-import { CreatorEarningsResponse } from '@/app/api/creator-earnings/route';
 import { CreatorProfile } from './CreatorProfile';
 import { ShareableAnalyticsCard } from './ShareableAnalyticsCard';
+
+// Define types for the new API response
+interface AnalyticsResults {
+  profile: {
+    handle: string;
+    displayName?: string;
+    bio?: string;
+    avatar?: string;
+    publicWallet?: string;
+  };
+  metrics: {
+    totalEarnings: number;
+    totalVolume: number;
+    posts: number;
+    averageEarningsPerPost: number;
+  };
+  coins: {
+    created: {
+      count: number;
+      items: Array<{
+        name: string;
+        symbol: string;
+        address: string;
+        balance: number;
+        uniqueHolders: number;
+        totalVolume: number;
+        estimatedEarnings: number;
+      }>;
+    };
+    collected: {
+      count: number;
+      items: Array<{
+        name: string;
+        symbol: string;
+        address: string;
+        balance: number;
+        creatorAddress?: string;
+      }>;
+    };
+  };
+  holderVsTrader: {
+    totalHolders: number;
+    estimatedCollectors: number;
+    estimatedTraders: number;
+    coinBreakdown: any[];
+  };
+}
 
 interface AnalyticsDashboardProps {
   handle: string;
@@ -15,7 +61,7 @@ interface AnalyticsDashboardProps {
 }
 
 export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) {
-  const [creatorData, setCreatorData] = useState<CreatorEarningsResponse | null>(null);
+  const [creatorData, setCreatorData] = useState<AnalyticsResults | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCoin, setSelectedCoin] = useState<string | null>(null);
@@ -30,7 +76,8 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
       
       try {
         console.log(`Fetching creator data for handle: ${handle}`);
-        const response = await fetch(`/api/creator-earnings?handle=${encodeURIComponent(handle)}`);
+        // Use the new creator-analytics API instead of creator-earnings
+        const response = await fetch(`/api/creator-analytics?identifier=${encodeURIComponent(handle)}&fetchAll=true`);
         
         if (!response.ok) {
           throw new Error(`Error fetching creator data: ${response.statusText}`);
@@ -41,8 +88,8 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
         setCreatorData(data);
         
         // Set the first coin as selected by default if available
-        if (data.createdCoins && data.createdCoins.length > 0) {
-          setSelectedCoin(data.createdCoins[0].address);
+        if (data.coins.created.items && data.coins.created.items.length > 0) {
+          setSelectedCoin(data.coins.created.items[0].address);
         }
       } catch (err) {
         console.error('Failed to fetch creator data:', err);
@@ -108,7 +155,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
   }
 
   // If no coins created yet
-  if (!creatorData.createdCoins || creatorData.createdCoins.length === 0) {
+  if (!creatorData.coins.created.items || creatorData.coins.created.items.length === 0) {
     return (
       <div className="p-6">
         <h2 className="text-2xl font-mono text-lime-500 mb-6">Creator Analytics</h2>
@@ -182,17 +229,68 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
 
       <div className="grid gap-6">
         {/* Creator Profile */}
-        <CreatorProfile handle={handle} />
-        
-        {/* Earnings Summary */}
-        <EarningsSummary handle={handle} />
+        <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700">
+          <div className="flex items-start gap-4">
+            {creatorData.profile.avatar ? (
+              <div className="w-16 h-16 rounded-full overflow-hidden relative">
+                <img 
+                  src={creatorData.profile.avatar} 
+                  alt={creatorData.profile.displayName || creatorData.profile.handle} 
+                  className="object-cover w-full h-full"
+                />
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-lime-900/20 flex items-center justify-center">
+                <span className="text-lime-500 text-xl font-bold">
+                  {(creatorData.profile.displayName || creatorData.profile.handle)?.charAt(0)?.toUpperCase() || 'Z'}
+                </span>
+              </div>
+            )}
+            
+            <div>
+              <h2 className="text-xl font-mono text-white">{creatorData.profile.displayName || creatorData.profile.handle}</h2>
+              <p className="text-gray-400">@{creatorData.profile.handle}</p>
+              {creatorData.profile.bio && <p className="text-gray-400 mt-2 text-sm">{creatorData.profile.bio}</p>}
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+            <div className="bg-[#13151F] p-3 rounded-lg">
+              <p className="text-gray-400 text-xs mb-1 font-mono">TOTAL EARNINGS</p>
+              <p className="text-lime-400 text-xl font-bold">
+                ${creatorData.metrics.totalEarnings.toFixed(2)}
+              </p>
+            </div>
+            
+            <div className="bg-[#13151F] p-3 rounded-lg">
+              <p className="text-gray-400 text-xs mb-1 font-mono">TRADING VOLUME</p>
+              <p className="text-white text-xl font-bold">
+                ${creatorData.metrics.totalVolume.toFixed(2)}
+              </p>
+            </div>
+            
+            <div className="bg-[#13151F] p-3 rounded-lg">
+              <p className="text-gray-400 text-xs mb-1 font-mono">POSTS</p>
+              <p className="text-white text-xl font-bold">
+                {creatorData.metrics.posts}
+              </p>
+            </div>
+            
+            <div className="bg-[#13151F] p-3 rounded-lg">
+              <p className="text-gray-400 text-xs mb-1 font-mono">AVG EARNINGS/POST</p>
+              <p className="text-white text-xl font-bold">
+                ${creatorData.metrics.averageEarningsPerPost.toFixed(2)}
+              </p>
+            </div>
+          </div>
+        </div>
         
         {/* Coin Selector */}
-        {creatorData.createdCoins.length > 1 && (
+        {creatorData.coins.created.items.length > 1 && (
           <div className="bg-[#1a1e2e] p-4 rounded-lg border border-gray-700">
             <p className="text-gray-400 font-mono text-sm mb-2">SELECT COIN FOR DETAILED ANALYTICS</p>
             <div className="flex flex-wrap gap-2">
-              {creatorData.createdCoins.map((coin) => (
+              {creatorData.coins.created.items.map((coin) => (
                 <button
                   key={coin.address}
                   onClick={() => setSelectedCoin(coin.address)}
