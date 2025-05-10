@@ -480,7 +480,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
                       variant={pageNum === currentPage ? "default" : "outline"}
                       size="sm"
                       className={`h-8 w-8 p-0 ${
-                        pageNum === currentPage ? 'b' : ''
+                        pageNum === currentPage ? 'bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400' : ''
                       }`}
                     >
                       {pageNum}
