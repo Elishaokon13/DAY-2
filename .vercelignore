@@ -1,0 +1,9 @@
+# Test pages that shouldn't be deployed
+/app/balances-test
+/app/graphql-test
+/app/rewards-test
+
+# Development and build artifacts
+.next
+node_modules
+.DS_Store 
