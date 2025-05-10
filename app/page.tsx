@@ -107,7 +107,7 @@ export default function App() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-[var(--app-accent)]"
+                  className="text-[var(--app-accent)] bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400"
                   onClick={handleBackToTokens}
                 >
                   <Icon name="arrowLeft" size="sm" className="mr-1 text-lime-400" />
