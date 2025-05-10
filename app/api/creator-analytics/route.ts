@@ -189,7 +189,51 @@ export async function GET(req: NextRequest) {
     // Step 4: Calculate analytics metrics
     let totalEarnings = 0;
     let totalVolume = 0;
-    const postsCount = createdCoins.length;
+    
+    // We need a more comprehensive count of all posts (not just coins with balances)
+    // First, use the count of created coins we've found
+    let postsCount = createdCoins.length;
+    
+    // For creators with many posts, this count might not be complete
+    // Log for debugging purposes
+    console.log(`Initial posts count based on created coins: ${postsCount}`);
+    
+    // For users with a public wallet, we can attempt to fetch all created coins
+    // even if they don't hold them anymore
+    try {
+      if (userWallets.length > 0 && fetchAll) {
+        console.log(`Fetching all coins created by wallets: ${userWallets.join(', ')}`);
+        
+        // Fetch coins for each wallet
+        for (const wallet of userWallets) {
+          try {
+            const response = await fetch(
+              `https://api.zora.co/creator-coins?chainIds=8453&creator=${wallet}`, 
+              { headers: { Accept: 'application/json' } }
+            );
+            
+            if (response.ok) {
+              const data = await response.json();
+              if (data && Array.isArray(data.coins)) {
+                console.log(`Found ${data.coins.length} coins created by wallet ${wallet}`);
+                
+                // Update the count if we found more coins than we previously knew about
+                if (data.coins.length > postsCount) {
+                  console.log(`Updating post count from ${postsCount} to ${data.coins.length}`);
+                  postsCount = data.coins.length;
+                }
+              }
+            }
+          } catch (err) {
+            console.error(`Error fetching additional coins for wallet ${wallet}:`, err);
+            // Continue with existing count on error
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error while attempting to get complete post count:', err);
+      // Continue with existing count on error
+    }
     
     // Calculate total volume and estimate earnings (5% creator fee)
     createdCoinsWithDetails.forEach(coin => {
