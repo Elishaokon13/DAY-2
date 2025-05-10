@@ -7,6 +7,7 @@ import { TimelineChart } from './TimelineChart';
 import { Button } from '../ui/button';
 import { CreatorProfile } from './CreatorProfile';
 import { ShareableAnalyticsCard } from './ShareableAnalyticsCard';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Define types for the new API response
 interface AnalyticsResults {
@@ -78,6 +79,10 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
   const [error, setError] = useState<string | null>(null);
   const [selectedCoin, setSelectedCoin] = useState<string | null>(null);
   const [showShareableCard, setShowShareableCard] = useState<boolean>(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   // Initial data load - fast load with limited data
   useEffect(() => {
@@ -169,6 +174,30 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
     } finally {
       setFullDataLoading(false);
     }
+  };
+
+  // Pagination handlers
+  const totalPages = creatorData ? Math.ceil(creatorData.coins.created.items.length / pageSize) : 0;
+  
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+  
+  const goToPrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+  
+  // Get paginated coins
+  const getPaginatedCoins = () => {
+    if (!creatorData) return [];
+    
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return creatorData.coins.created.items.slice(startIndex, endIndex);
   };
 
   if (loading) {
@@ -384,12 +413,41 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
           </div>
         )}
         
-        {/* Coin Selector */}
-        {creatorData.coins.created.items.length > 1 && (
+        {/* Paginated Coin Selector */}
+        {creatorData.coins.created.items.length > 0 && (
           <div className="bg-[#1a1e2e] p-4 rounded-lg border border-gray-700">
-            <p className="text-gray-400 font-mono text-sm mb-2">SELECT COIN FOR DETAILED ANALYTICS</p>
+            <div className="flex justify-between items-center mb-4">
+              <p className="text-gray-400 font-mono text-sm">SELECT COIN FOR DETAILED ANALYTICS</p>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 text-sm">
+                  Page {currentPage} of {totalPages} 
+                  ({pageSize} coins per page, {creatorData.coins.created.items.length} total)
+                </span>
+                <div className="flex gap-1">
+                  <Button 
+                    onClick={goToPrevPage}
+                    disabled={currentPage <= 1}
+                    size="sm"
+                    variant="outline"
+                    className="h-8 w-8 p-0 flex items-center justify-center"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    onClick={goToNextPage}
+                    disabled={currentPage >= totalPages}
+                    size="sm"
+                    variant="outline"
+                    className="h-8 w-8 p-0 flex items-center justify-center"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
             <div className="flex flex-wrap gap-2">
-              {creatorData.coins.created.items.map((coin) => (
+              {getPaginatedCoins().map((coin) => (
                 <button
                   key={coin.address}
                   onClick={() => setSelectedCoin(coin.address)}
@@ -403,6 +461,47 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
                 </button>
               ))}
             </div>
+            
+            {/* Page selector */}
+            {totalPages > 5 && (
+              <div className="mt-4 flex justify-center gap-2">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  // Calculate page numbers to show centered around current page
+                  const pageOffset = Math.max(0, currentPage - 3);
+                  const pageNum = i + 1 + pageOffset;
+                  
+                  // Only show up to totalPages
+                  if (pageNum > totalPages) return null;
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      variant={pageNum === currentPage ? "default" : "outline"}
+                      size="sm"
+                      className={`h-8 w-8 p-0 ${
+                        pageNum === currentPage ? 'bg-lime-700' : ''
+                      }`}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+                {totalPages > 5 && currentPage < totalPages - 2 && (
+                  <>
+                    <span className="flex items-center text-gray-500">...</span>
+                    <Button
+                      onClick={() => setCurrentPage(totalPages)}
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                    >
+                      {totalPages}
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
         
