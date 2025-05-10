@@ -12,6 +12,8 @@ declare global {
     ethereum?: {
       request: (params: { method: string; params?: any[] }) => Promise<any>;
     };
+    // Warpcast environment detection
+    isWarpcast?: boolean;
   }
 }
 
@@ -31,6 +33,67 @@ export function PremiumCastButton({ collageId, onPaymentComplete }: PremiumCastB
   const [error, setError] = useState<string | null>(null);
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
   const [isPaid, setIsPaid] = useState(false);
+  const [isWarpcastEnvironment, setIsWarpcastEnvironment] = useState<boolean | null>(null);
+  const [walletReady, setWalletReady] = useState<boolean>(Boolean(window.ethereum));
+
+  // Check if we're running in Warpcast environment
+  useEffect(() => {
+    // Check multiple indicators for Warpcast environment
+    const inWarpcast = 
+      // User is authenticated via MiniKit Farcaster
+      Boolean(context?.user?.username) || 
+      // Explicit window.isWarpcast flag
+      Boolean(window.isWarpcast) || 
+      // Check URL params or mobile app indicators
+      window.location.href.includes('warpcast.com') ||
+      // Check user agent for Warpcast app
+      navigator.userAgent.includes('Warpcast');
+    
+    console.log("Warpcast environment detection:", { 
+      hasUsername: Boolean(context?.user?.username),
+      isWarpcast: Boolean(window.isWarpcast),
+      urlIncludesWarpcast: window.location.href.includes('warpcast.com'),
+      userAgentIndicator: navigator.userAgent.includes('Warpcast'),
+      inWarpcast
+    });
+    
+    setIsWarpcastEnvironment(inWarpcast);
+
+    // If we're in Warpcast environment but window.ethereum isn't available yet,
+    // poll for it to become available
+    if (inWarpcast && !window.ethereum) {
+      const checkForWallet = () => {
+        if (window.ethereum) {
+          console.log("Wallet detected after component mounted");
+          setWalletReady(true);
+          return true; // Stop polling
+        }
+        return false; // Continue polling
+      };
+      
+      // Immediately check once
+      if (!checkForWallet()) {
+        // Start polling every 500ms for up to 10 seconds
+        let attempts = 0;
+        const maxAttempts = 20; // 10 seconds total (20 * 500ms)
+        
+        const intervalId = setInterval(() => {
+          attempts++;
+          if (checkForWallet() || attempts >= maxAttempts) {
+            clearInterval(intervalId);
+            if (attempts >= maxAttempts && !window.ethereum) {
+              console.log("Wallet not detected after maximum attempts");
+            }
+          }
+        }, 500);
+        
+        // Clean up interval on unmount
+        return () => clearInterval(intervalId);
+      }
+    } else if (window.ethereum) {
+      setWalletReady(true);
+    }
+  }, [context]);
 
   // Check if this collage has already been paid for
   useEffect(() => {
@@ -64,9 +127,21 @@ export function PremiumCastButton({ collageId, onPaymentComplete }: PremiumCastB
       // Create payment request
       const amount = parseUnits(USDC_AMOUNT, 6); // USDC has 6 decimals
       
-      // For Farcaster frames, use window.ethereum if available
+      // Check for Ethereum provider with improved detection
       if (!window.ethereum) {
-        throw new Error('No Ethereum provider found. Please use Warpcast.');
+        console.log("No window.ethereum found, checking environment:", {
+          isWarpcastEnvironment,
+          walletReady
+        });
+        
+        // If we're in Warpcast but window.ethereum isn't available yet, it might be a timing issue
+        if (isWarpcastEnvironment) {
+          setError('Wallet connection is initializing. Please try again in a few seconds.');
+        } else {
+          setError('No Ethereum provider found. Please ensure you are using Warpcast.');
+        }
+        setLoading(false);
+        return;
       }
       
       // Get the connected address
@@ -153,24 +228,33 @@ export function PremiumCastButton({ collageId, onPaymentComplete }: PremiumCastB
     );
   }
 
+  // Determine button state and text
+  let buttonText = 'Pay $1 USDC to Cast as Art';
+  let buttonIcon = 'star';
+  let buttonDisabled = loading;
+  
+  if (loading) {
+    buttonText = 'Processing Payment...';
+    buttonIcon = 'arrowLeft';
+  } else if (isWarpcastEnvironment && !walletReady) {
+    buttonText = 'Connecting Wallet...';
+    buttonIcon = 'loading';
+    buttonDisabled = true;
+  }
+
   return (
     <div className="space-y-2">
       <Button 
         className="bg-lime-900/80 hover:bg-lime-800 text-white w-full flex items-center justify-center"
         onClick={handlePayment}
-        disabled={loading}
+        disabled={buttonDisabled}
       >
-        {loading ? (
-          <>
-            <Icon name="arrowLeft" size="sm" className="mr-2 animate-spin" />
-            Processing Payment...
-          </>
-        ) : (
-          <>
-            <Icon name="star" size="sm" className="mr-2" />
-            Pay $1 USDC to Cast as Art
-          </>
-        )}
+        <Icon 
+          name={buttonIcon as any} 
+          size="sm" 
+          className={`mr-2 ${loading || (isWarpcastEnvironment && !walletReady) ? 'animate-spin' : ''}`} 
+        />
+        {buttonText}
       </Button>
       
       {error && (
