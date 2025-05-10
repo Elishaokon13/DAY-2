@@ -110,7 +110,7 @@ export default function App() {
                   className="text-[var(--app-accent)]"
                   onClick={handleBackToTokens}
                 >
-                  <Icon name="arrowLeft" size="sm" className="mr-1" />
+                  <Icon name="arrowLeft" size="sm" className="mr-1 text-lime-400" />
                   Back to Search
                 </Button>
               )}
