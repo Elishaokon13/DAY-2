@@ -135,19 +135,20 @@ export function ZoraWalletInput({ displayName, onHandleChange, onViewAnalytics }
                   <div className="flex gap-4">
                     <button
                       onClick={handleSubmit}
-                      disabled={loading}
+                      disabled={loading || !validateHandle(handle)}
                       className="flex-1 bg-black border border-gray-700 hover:border-lime-300 text-gray-500 py-4 font-mono tracking-wider transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading ? 'CHECKING...' : 'SEARCH TOKENS'}
                     </button>
                     
-                    {onViewAnalytics && validateHandle(handle) && (
+                    {onViewAnalytics && (
                       <button
                         onClick={() => onViewAnalytics(handle)}
-                        className="flex items-center justify-center bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400 py-4 px-4 font-mono tracking-wider transition-colors duration-300"
+                        disabled={!validateHandle(handle)}
+                        className="flex-1 items-center justify-center bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400 py-4 px-4 font-mono tracking-wider transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex"
                       >
                         <Icon name="barChart" size="sm" className="mr-2" />
-                        ANALYTICS
+                        DIRECT ANALYTICS
                       </button>
                     )}
                   </div>
