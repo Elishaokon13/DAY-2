@@ -350,7 +350,7 @@ export default function BalancesTestPage() {
                 <details className="mt-2">
                   <summary className="text-lime-400 cursor-pointer text-sm">Show all balance data</summary>
                   <pre className="text-xs text-gray-300 mt-2 overflow-x-auto">
-                    {JSON.stringify(results.balances.all.map(b => ({
+                    {JSON.stringify(results.balances.all.map((b: { coin: { name: string, creatorAddress: string }, isCreator: boolean }) => ({
                       name: b.coin.name,
                       creatorAddress: b.coin.creatorAddress,
                       isCreator: b.isCreator
@@ -376,7 +376,7 @@ export default function BalancesTestPage() {
                   <details className="mt-2">
                     <summary className="text-lime-400 cursor-pointer text-sm">Show earnings coin data</summary>
                     <pre className="text-xs text-gray-300 mt-2 overflow-x-auto">
-                      {JSON.stringify(earningsData.createdCoins?.map(c => ({
+                      {JSON.stringify(earningsData.createdCoins?.map((c: {name: string, address: string}) => ({
                         name: c.name,
                         address: c.address,
                       })) || [], null, 2)}
@@ -563,7 +563,7 @@ export default function BalancesTestPage() {
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={earningsData.createdCoins.map(coin => ({
+                      data={earningsData.createdCoins.map((coin: {name: string, uniqueHolders: string}) => ({
                         name: coin.name.length > 15 ? coin.name.substring(0, 15) + '...' : coin.name,
                         holders: parseInt(coin.uniqueHolders) || 0
                       }))}
@@ -628,7 +628,7 @@ export default function BalancesTestPage() {
               )}
               
               <div className="space-y-4">
-                {results.balances.created.coins.map((balance, index) => (
+                {results.balances.created.coins.map((balance: any, index: number) => (
                   <div key={index} className="bg-[#13151F] p-4 rounded-lg">
                     <div className="flex items-center gap-3">
                       {balance.coin.image ? (
@@ -678,7 +678,7 @@ export default function BalancesTestPage() {
             <Card className="p-6 bg-[#1a1e2e] border border-gray-700">
               <h2 className="text-xl font-mono text-lime-500 mb-4">Collected Coins</h2>
               <div className="space-y-4">
-                {results.balances.collected.coins.slice(0, 10).map((balance, index) => (
+                {results.balances.collected.coins.slice(0, 10).map((balance: any, index: number) => (
                   <div key={index} className="bg-[#13151F] p-4 rounded-lg">
                     <div className="flex items-center gap-3">
                       {balance.coin.image ? (

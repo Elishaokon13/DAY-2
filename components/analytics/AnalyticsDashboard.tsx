@@ -8,6 +8,7 @@ import { Button } from '../ui/button';
 import { CreatorProfile } from './CreatorProfile';
 import { ShareableAnalyticsCard } from './ShareableAnalyticsCard';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Icon } from '@/components/Icon';
 
 // Define types for the new API response
 interface AnalyticsResults {
@@ -309,7 +310,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
             size="sm"
             onClick={() => setShowShareableCard(true)}
           >
-            Create Shareable Card
+            <Icon name="share" size="sm" className="justify-center" />
           </Button>
           
           {onBack && (
@@ -319,7 +320,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
               size="sm"
               onClick={onBack}
             >
-              Search for another creator
+              <Icon name="search" size="sm" className="justify-center" />
             </Button>
           )}
         </div>
