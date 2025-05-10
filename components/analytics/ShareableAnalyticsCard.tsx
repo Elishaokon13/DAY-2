@@ -321,17 +321,15 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
   const COLORS = ['#10B981', '#6366F1'];
   
   // Default to reasonable values if collector stats aren't available
-  const collectorsPercentage = typeof profileData.holderVsTrader?.coinBreakdown?.percentage === 'object' 
-    ? (profileData.holderVsTrader.coinBreakdown[0].percentage || 75) 
-    : (profileData.holderVsTrader.coinBreakdown[0].percentage ?? 75);
+  const collectorsPercentage = profileData.holderVsTrader?.estimatedCollectors && profileData.holderVsTrader?.totalHolders 
+    ? Math.round((profileData.holderVsTrader.estimatedCollectors / profileData.holderVsTrader.totalHolders) * 100) || 75
+    : 75;
     
-  const tradersPercentage = typeof profileData.holderVsTrader?.coinBreakdown?.percentage === 'object'
-    ? (profileData.holderVsTrader.coinBreakdown[1].percentage || 25)
-    : (profileData.holderVsTrader.coinBreakdown[1].percentage ?? 25);
+  const tradersPercentage = 100 - collectorsPercentage;
   
   const chartData = [
-    { name: 'Collectors', value: typeof collectorsPercentage === 'object' ? 75 : collectorsPercentage },
-    { name: 'Traders', value: typeof tradersPercentage === 'object' ? 25 : tradersPercentage }
+    { name: 'Collectors', value: collectorsPercentage },
+    { name: 'Traders', value: tradersPercentage }
   ];
 
   return (
@@ -431,11 +429,11 @@ export function ShareableAnalyticsCard({ handle }: ShareableAnalyticsCardProps) 
             <div className="ml-4">
               <div className="flex items-center mb-2">
                 <div className="w-3 h-3 bg-[#10B981] rounded-full mr-2"></div>
-                <p className="text-white text-sm">Collectors: {typeof chartData[0].value === 'object' ? 75 : chartData[0].value}%</p>
+                <p className="text-white text-sm">Collectors: {collectorsPercentage}%</p>
               </div>
               <div className="flex items-center">
                 <div className="w-3 h-3 bg-[#6366F1] rounded-full mr-2"></div>
-                <p className="text-white text-sm">Traders: {typeof chartData[1].value === 'object' ? 25 : chartData[1].value}%</p>
+                <p className="text-white text-sm">Traders: {tradersPercentage}%</p>
               </div>
             </div>
           </div>
