@@ -1,5 +1,5 @@
 type IconProps = {
-    name: "heart" | "star" | "check" | "plus" | "arrow-right" | "barChart";
+    name: "heart" | "star" | "check" | "plus" | "arrow-right" | "barChart" | "arrowLeft";
     size?: "sm" | "md" | "lg";
     className?: string;
   }
@@ -87,6 +87,22 @@ type IconProps = {
           <title>Arrow Right</title>
           <line x1="5" y1="12" x2="19" y2="12" />
           <polyline points="12 5 19 12 12 19" />
+        </svg>
+      ),
+      "arrowLeft": (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <title>Arrow Left</title>
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="12 19 5 12 12 5" />
         </svg>
       ),
       "barChart": (
