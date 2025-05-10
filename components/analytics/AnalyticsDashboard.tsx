@@ -429,7 +429,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
                     disabled={currentPage <= 1}
                     size="sm"
                     variant="outline"
-                    className="h-8 w-8 p-0 flex items-center justify-center"
+                    className="h-8 w-8 p-0 flex items-center justify-center bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
@@ -438,7 +438,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
                     disabled={currentPage >= totalPages}
                     size="sm"
                     variant="outline"
-                    className="h-8 w-8 p-0 flex items-center justify-center"
+                    className="h-8 w-8 p-0 flex items-center justify-center bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
