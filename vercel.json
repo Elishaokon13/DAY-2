@@ -1,6 +1,5 @@
 {
   "buildCommand": "npm run build:prod",
-  "ignoreCommand": "next lint --quiet",
   "headers": [
     {
       "source": "/(.*)",
