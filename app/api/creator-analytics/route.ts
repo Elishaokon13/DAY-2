@@ -107,7 +107,7 @@ export async function GET(req: NextRequest) {
     }
     
     // Remove duplicates
-    userWallets = [...new Set(userWallets)];
+    userWallets = Array.from(new Set(userWallets));
     
     console.log(`User's wallets to check:`, userWallets);
     
