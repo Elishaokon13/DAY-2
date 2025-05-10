@@ -90,8 +90,8 @@ export async function GET(req: NextRequest) {
     const protocolRewardsBase = Number(baseRewards.protocolRewards) / 1e18; // Convert from wei to ETH
     const protocolRewardsZora = Number(zoraRewards.protocolRewards) / 1e18;
     
-    const ethRoyaltiesBase = Number(baseRewards.secondaryRoyalties.eth || 0n) / 1e18;
-    const ethRoyaltiesZora = Number(zoraRewards.secondaryRoyalties.eth || 0n) / 1e18;
+    const ethRoyaltiesBase = Number(baseRewards.secondaryRoyalties.eth || BigInt(0)) / 1e18;
+    const ethRoyaltiesZora = Number(zoraRewards.secondaryRoyalties.eth || BigInt(0)) / 1e18;
     
     // Parse ERC20 royalties
     const erc20Royalties = {
