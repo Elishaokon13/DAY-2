@@ -453,7 +453,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
                   onClick={() => setSelectedCoin(coin.address)}
                   className={`px-3 py-2 rounded font-mono text-sm ${
                     selectedCoin === coin.address
-                      ? 'bg-lime-700 text-white'
+                      ? ''
                       : 'bg-[#13151F] text-gray-300 hover:bg-gray-800'
                   }`}
                 >
