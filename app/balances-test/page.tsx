@@ -71,7 +71,7 @@ export default function BalancesTestPage() {
       }
     } catch (err) {
       console.error('Failed to fetch balances:', err);
-      setError(err.message || 'An error occurred');
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }

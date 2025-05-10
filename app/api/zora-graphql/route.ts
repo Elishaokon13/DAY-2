@@ -106,7 +106,20 @@ export async function POST(req: NextRequest) {
     let totalEarnings = 0;
     let totalVolume = 0;
     
-    const processedTokens = tokens.map(token => {
+    // Define token interface
+    interface ZoraToken {
+      address?: string;
+      name?: string;
+      symbol?: string;
+      totalVolume?: string;
+      volume24h?: string;
+      uniqueHolders?: number;
+      creatorAddress?: string;
+      createdAt?: string;
+      network?: string;
+    }
+    
+    const processedTokens = tokens.map((token: ZoraToken) => {
       const volume = parseFloat(token.totalVolume || '0');
       totalVolume += volume;
       
@@ -130,7 +143,7 @@ export async function POST(req: NextRequest) {
     console.error('Error fetching from Zora GraphQL API:', error);
     return NextResponse.json({ 
       error: 'Failed to fetch data from Zora API', 
-      details: error.message 
+      details: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
   }
 }
@@ -143,10 +156,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing creator address or ENS' }, { status: 400 });
   }
   
-  // Convert to POST request format
+  // Create a properly typed request object
   const fakeReq = {
     json: async () => ({ creator })
-  };
+  } as NextRequest;
   
-  return POST(fakeReq as any);
+  return POST(fakeReq);
 } 

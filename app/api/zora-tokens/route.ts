@@ -105,7 +105,8 @@ export async function GET(req: NextRequest) {
             const imageUrl = {
               small: coin?.mediaContent?.previewImage?.small || null,
               medium: coin?.mediaContent?.previewImage?.medium || null,
-              large: coin?.mediaContent?.previewImage?.large || null
+              // Use medium as fallback for large since large doesn't exist
+              large: coin?.mediaContent?.previewImage?.medium || null
             };
 
             return {
