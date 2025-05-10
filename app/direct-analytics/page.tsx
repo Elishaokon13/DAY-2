@@ -22,6 +22,11 @@ import {
 } from 'recharts';
 
 // Define types for the API response
+interface CreatorMatchDetail {
+  wallet: string;
+  matches: boolean;
+}
+
 interface CoinDetail {
   name: string;
   symbol: string;
@@ -33,8 +38,8 @@ interface CoinDetail {
   creatorAddress?: string;
   creatorMatchDetails?: {
     creatorAddress: string;
-    publicWallet: string;
-    matchesPublic: boolean;
+    userWallets: string[];
+    matchDetails: CreatorMatchDetail[];
   };
 }
 
@@ -411,8 +416,13 @@ export default function DirectAnalyticsPage() {
                   <h3 className="font-mono text-yellow-400 mb-2">Creator Match Debugging</h3>
                   
                   <div className="mb-3">
-                    <p className="text-gray-400 text-xs font-mono">USER PUBLIC WALLET</p>
-                    <p className="text-white break-all font-mono">{results.profile.publicWallet || 'N/A'}</p>
+                    <p className="text-gray-400 text-xs font-mono">USER WALLETS</p>
+                    <p className="text-white break-all font-mono">{results.profile.publicWallet || 'N/A'} (Public)</p>
+                    {results.coins.created.items.length > 0 && results.coins.created.items[0].creatorMatchDetails?.userWallets.map((wallet, i) => (
+                      wallet !== results.profile.publicWallet && (
+                        <p key={i} className="text-white break-all font-mono">{wallet} (Zora-generated)</p>
+                      )
+                    ))}
                   </div>
                   
                   <h4 className="text-gray-300 mt-4 mb-2">Created Coins Details</h4>
@@ -422,6 +432,19 @@ export default function DirectAnalyticsPage() {
                       <p className="text-gray-400 text-xs mt-1">Creator Address:</p>
                       <p className="text-white break-all font-mono text-xs">{coin.creatorAddress || 'Unknown'}</p>
                       <p className="mt-2 text-green-400 font-mono text-xs">Identified as created by you ✓</p>
+                      
+                      {coin.creatorMatchDetails && (
+                        <div className="mt-2 p-2 bg-[#1E1E2D] rounded">
+                          <p className="text-xs text-gray-400">Match details:</p>
+                          {coin.creatorMatchDetails.matchDetails.map((match, idx) => (
+                            <div key={idx} className="text-xs mt-1">
+                              <span className={match.matches ? "text-green-400" : "text-gray-400"}>
+                                {match.matches ? "✓" : "✗"} Matches {match.wallet.slice(0, 6)}...{match.wallet.slice(-4)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                   
@@ -433,22 +456,22 @@ export default function DirectAnalyticsPage() {
                       <p className="text-white break-all font-mono text-xs">{coin.creatorAddress || 'Unknown'}</p>
                       <p className="mt-2 text-yellow-400 font-mono text-xs">Identified as collected by you</p>
                       
-                      {/* Compare addresses to help debug */}
-                      {coin.creatorAddress && results.profile.publicWallet && (
+                      {/* Show match check details */}
+                      {coin.creatorAddress && coin.creatorMatchDetails && (
                         <div className="mt-2 p-2 bg-[#1E1E2D] rounded">
-                          <p className="text-xs text-gray-400">Address Match Check:</p>
-                          <p className="text-xs text-gray-300">
-                            Creator: <span className="font-mono">{coin.creatorAddress.toLowerCase()}</span>
-                          </p>
-                          <p className="text-xs text-gray-300">
-                            Your wallet: <span className="font-mono">{results.profile.publicWallet.toLowerCase()}</span>
-                          </p>
-                          <p className="text-xs mt-1">
-                            {coin.creatorAddress.toLowerCase() === results.profile.publicWallet.toLowerCase() ? 
-                              <span className="text-green-400">Addresses match! Should be categorized as created.</span> : 
-                              <span className="text-gray-400">Addresses don't match. Correctly categorized as collected.</span>
-                            }
-                          </p>
+                          <p className="text-xs text-gray-400">Match check:</p>
+                          {coin.creatorMatchDetails.matchDetails.map((match, idx) => (
+                            <div key={idx} className="text-xs mt-1">
+                              <span className={match.matches ? "text-green-400" : "text-gray-400"}>
+                                {match.matches ? "✓" : "✗"} Matches {match.wallet.slice(0, 6)}...{match.wallet.slice(-4)}
+                              </span>
+                            </div>
+                          ))}
+                          
+                          {/* Show if this should actually be categorized as created */}
+                          {coin.creatorMatchDetails.matchDetails.some(match => match.matches) && (
+                            <p className="text-red-400 mt-2 text-xs">This coin should be categorized as CREATED by you!</p>
+                          )}
                         </div>
                       )}
                     </div>
