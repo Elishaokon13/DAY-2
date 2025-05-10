@@ -21,12 +21,62 @@ import {
   Area
 } from 'recharts';
 
+// Define types for the API response
+interface CoinDetail {
+  name: string;
+  symbol: string;
+  address: string;
+  balance: number;
+  uniqueHolders: number;
+  totalVolume: number;
+  estimatedEarnings: number;
+  creatorAddress?: string;
+  creatorMatchDetails?: {
+    creatorAddress: string;
+    publicWallet: string;
+    matchesPublic: boolean;
+  };
+}
+
+interface AnalyticsResults {
+  profile: {
+    handle: string;
+    displayName?: string;
+    bio?: string;
+    avatar?: string;
+    publicWallet?: string;
+  };
+  metrics: {
+    totalEarnings: number;
+    totalVolume: number;
+    posts: number;
+    averageEarningsPerPost: number;
+  };
+  coins: {
+    created: {
+      count: number;
+      items: CoinDetail[];
+    };
+    collected: {
+      count: number;
+      items: CoinDetail[];
+    };
+  };
+  holderVsTrader: {
+    totalHolders: number;
+    estimatedCollectors: number;
+    estimatedTraders: number;
+    coinBreakdown: any[];
+  };
+}
+
 export default function DirectAnalyticsPage() {
   const [identifier, setIdentifier] = useState<string>('');
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<AnalyticsResults | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [fetchAll, setFetchAll] = useState<boolean>(false);
+  const [showDiagnostics, setShowDiagnostics] = useState<boolean>(false);
   
   const fetchAnalytics = async () => {
     if (!identifier) return;
@@ -46,9 +96,9 @@ export default function DirectAnalyticsPage() {
       const data = await response.json();
       console.log('Analytics response:', data);
       setResults(data);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to fetch analytics:', err);
-      setError(err.message || 'An error occurred');
+      setError((err as Error).message || 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -144,6 +194,19 @@ export default function DirectAnalyticsPage() {
             />
             <label htmlFor="fetchAll" className="text-sm text-gray-300">
               Fetch all pages (for more accurate results)
+            </label>
+          </div>
+          
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              type="checkbox"
+              id="showDiagnostics"
+              checked={showDiagnostics}
+              onChange={(e) => setShowDiagnostics(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-700 bg-[#13151F] text-lime-500"
+            />
+            <label htmlFor="showDiagnostics" className="text-sm text-gray-300">
+              Show diagnostics (debugging)
             </label>
           </div>
         </form>
@@ -336,6 +399,63 @@ export default function DirectAnalyticsPage() {
                 </div>
               </Card>
             </div>
+          )}
+          
+          {/* Diagnostics Panel - Only shown when enabled */}
+          {showDiagnostics && (
+            <Card className="p-6 bg-[#1a1e2e] border border-yellow-700">
+              <h2 className="text-xl font-mono text-yellow-500 mb-4">Diagnostics Panel</h2>
+              
+              <div className="space-y-4">
+                <div className="bg-[#13151F] p-4 rounded-lg">
+                  <h3 className="font-mono text-yellow-400 mb-2">Creator Match Debugging</h3>
+                  
+                  <div className="mb-3">
+                    <p className="text-gray-400 text-xs font-mono">USER PUBLIC WALLET</p>
+                    <p className="text-white break-all font-mono">{results.profile.publicWallet || 'N/A'}</p>
+                  </div>
+                  
+                  <h4 className="text-gray-300 mt-4 mb-2">Created Coins Details</h4>
+                  {results.coins.created.items.map((coin, i) => (
+                    <div key={`created-${i}`} className="border border-gray-700 p-3 rounded-md mb-3">
+                      <p className="text-white font-medium">{coin.name} ({coin.symbol})</p>
+                      <p className="text-gray-400 text-xs mt-1">Creator Address:</p>
+                      <p className="text-white break-all font-mono text-xs">{coin.creatorAddress || 'Unknown'}</p>
+                      <p className="mt-2 text-green-400 font-mono text-xs">Identified as created by you ✓</p>
+                    </div>
+                  ))}
+                  
+                  <h4 className="text-gray-300 mt-4 mb-2">First 5 Collected Coins Details</h4>
+                  {results.coins.collected.items.slice(0, 5).map((coin, i) => (
+                    <div key={`collected-${i}`} className="border border-gray-700 p-3 rounded-md mb-3">
+                      <p className="text-white font-medium">{coin.name} ({coin.symbol})</p>
+                      <p className="text-gray-400 text-xs mt-1">Creator Address:</p>
+                      <p className="text-white break-all font-mono text-xs">{coin.creatorAddress || 'Unknown'}</p>
+                      <p className="mt-2 text-yellow-400 font-mono text-xs">Identified as collected by you</p>
+                      
+                      {/* Compare addresses to help debug */}
+                      {coin.creatorAddress && results.profile.publicWallet && (
+                        <div className="mt-2 p-2 bg-[#1E1E2D] rounded">
+                          <p className="text-xs text-gray-400">Address Match Check:</p>
+                          <p className="text-xs text-gray-300">
+                            Creator: <span className="font-mono">{coin.creatorAddress.toLowerCase()}</span>
+                          </p>
+                          <p className="text-xs text-gray-300">
+                            Your wallet: <span className="font-mono">{results.profile.publicWallet.toLowerCase()}</span>
+                          </p>
+                          <p className="text-xs mt-1">
+                            {coin.creatorAddress.toLowerCase() === results.profile.publicWallet.toLowerCase() ? 
+                              <span className="text-green-400">Addresses match! Should be categorized as created.</span> : 
+                              <span className="text-gray-400">Addresses don't match. Correctly categorized as collected.</span>
+                            }
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
           )}
           
           {/* Created Coins */}
