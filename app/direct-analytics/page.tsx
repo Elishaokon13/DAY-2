@@ -418,11 +418,27 @@ export default function DirectAnalyticsPage() {
                   <div className="mb-3">
                     <p className="text-gray-400 text-xs font-mono">USER WALLETS</p>
                     <p className="text-white break-all font-mono">{results.profile.publicWallet || 'N/A'} (Public)</p>
-                    {results.coins.created.items.length > 0 && results.coins.created.items[0].creatorMatchDetails?.userWallets.map((wallet, i) => (
-                      wallet !== results.profile.publicWallet && (
-                        <p key={i} className="text-white break-all font-mono">{wallet} (Zora-generated)</p>
-                      )
+                    
+                    {/* Show all additional wallets found */}
+                    {results.coins.created.items.length > 0 && 
+                     results.coins.created.items[0].creatorMatchDetails?.userWallets
+                      .filter(wallet => wallet !== results.profile.publicWallet)
+                      .map((wallet, i) => (
+                        <div key={i} className="mt-2">
+                          <p className="text-white break-all font-mono">{wallet} (Zora-generated)</p>
+                          <p className="text-green-400 text-xs">Found coins created by this wallet ✓</p>
+                        </div>
                     ))}
+                    
+                    <div className="mt-4 p-3 bg-[#1E1E2D] rounded">
+                      <p className="text-xs text-gray-300">How this works:</p>
+                      <ul className="list-disc list-inside text-xs text-gray-400 space-y-1 mt-2">
+                        <li>We check your public wallet from your profile</li>
+                        <li>We look for patterns in your collected coins to find Zora-generated wallets</li>
+                        <li>We also check against a list of known wallet pairs</li>
+                        <li>Coins created by any of these wallets are counted as your created coins</li>
+                      </ul>
+                    </div>
                   </div>
                   
                   <h4 className="text-gray-300 mt-4 mb-2">Created Coins Details</h4>
