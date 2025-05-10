@@ -180,7 +180,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
     return (
       <div className="p-4 md:p-6">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-mono text-lime-500">Shareable Analytics Card</h2>
+          <h2 className="text-2xl font-mono text-lime-500">SHAREABLE ANALYTICS</h2>
           <Button 
             className="bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400 py-4 px-4 font-mono tracking-wider transition-colors duration-300"
             variant="outline"
