@@ -30,7 +30,6 @@ function serializeBigInt(obj: any): any {
 export async function GET(req: NextRequest) {
   const identifier = req.nextUrl.searchParams.get('identifier');
   const fetchAll = req.nextUrl.searchParams.get('fetchAll') === 'true';
-  const additionalWallets = req.nextUrl.searchParams.get('wallets');
   
   if (!identifier) {
     return NextResponse.json({ error: 'Missing identifier parameter (wallet address or handle)' }, { status: 400 });
@@ -78,36 +77,12 @@ export async function GET(req: NextRequest) {
     const publicWallet = profile.publicWallet?.walletAddress?.toLowerCase();
     
     // Create a list of the user's wallet addresses to check against
-    let userWallets = [
+    // Add the known Zora-generated wallet for this user
+    const userWallets = [
       publicWallet,
       // Add the Zora-generated wallet if the user is defidevrelalt
       identifier === 'defidevrelalt' ? '0xafc833331e494d72bc6568a011f614702ca3c892'.toLowerCase() : null
     ].filter(Boolean) as string[];
-    
-    // Add any user-provided additional wallets
-    if (additionalWallets) {
-      try {
-        const parsedWallets = JSON.parse(additionalWallets);
-        if (Array.isArray(parsedWallets)) {
-          const validWallets = parsedWallets
-            .filter(wallet => typeof wallet === 'string' && wallet.startsWith('0x'))
-            .map(wallet => wallet.toLowerCase());
-          
-          userWallets = [...userWallets, ...validWallets];
-        }
-      } catch (e) {
-        // If parsing fails, try to process as a comma-separated string
-        const walletArray = additionalWallets.split(',')
-          .map(wallet => wallet.trim())
-          .filter(wallet => wallet.startsWith('0x'))
-          .map(wallet => wallet.toLowerCase());
-        
-        userWallets = [...userWallets, ...walletArray];
-      }
-    }
-    
-    // Remove duplicates
-    userWallets = Array.from(new Set(userWallets));
     
     console.log(`User's wallets to check:`, userWallets);
     
