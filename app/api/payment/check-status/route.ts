@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Redis } from '@upstash/redis';
-
-// Initialize Redis client
-const redis = new Redis({
-  url: process.env.REDIS_URL || '',
-  token: process.env.REDIS_TOKEN || '',
-});
+import paymentStore from '@/lib/paymentStore';
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,7 +10,7 @@ export async function GET(req: NextRequest) {
     }
     
     // Check if this collage has been paid for
-    const paymentData = await redis.get(`payment:${collageId}`);
+    const paymentData = paymentStore.getPayment(collageId);
     
     return NextResponse.json({ 
       success: true,

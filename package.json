@@ -2,21 +2,23 @@
   "name": "my-mini-zora",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "build:prod": "cross-env NEXT_DISABLE_ESLINT=1 next build",
     "start": "next start",
     "lint": "next lint",
-    "test:analytics": "ts-node tests/analytics-test.ts"
+    "test:analytics": "ts-node tests/analytics-test.ts",
+    "deps": "npm ls ffi-napi"
   },
   "dependencies": {
     "@coinbase/onchainkit": "latest",
     "@farcaster/frame-sdk": "^0.0.36",
-    "@farcaster/hub-web": "^0.6.0",
     "@radix-ui/react-slot": "^1.2.0",
     "@tanstack/react-query": "^5",
-    "@upstash/redis": "^1.34.4",
     "@vercel/blob": "^1.0.0",
     "@zoralabs/coins-sdk": "^0.1.0",
     "@zoralabs/protocol-sdk": "^0.13.6",
@@ -54,5 +56,8 @@
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9.2",
     "typescript": "^5"
+  },
+  "overrides": {
+    "ffi-napi": false
   }
 }
