@@ -498,6 +498,7 @@ export default function DirectAnalyticsPage() {
           )}
           
           {/* Created Coins */}
+          {/* Commenting out Created Coins section as requested
           {results.coins.created.count > 0 && (
             <Card className="p-6 bg-[#1a1e2e] border border-gray-700">
               <h2 className="text-xl font-mono text-lime-500 mb-4">Created Coins</h2>
@@ -536,8 +537,10 @@ export default function DirectAnalyticsPage() {
               </div>
             </Card>
           )}
+          */}
           
           {/* Collected Coins */}
+          {/* Commenting out Collected Coins section as requested
           {results.coins.collected.count > 0 && (
             <Card className="p-6 bg-[#1a1e2e] border border-gray-700">
               <h2 className="text-xl font-mono text-lime-500 mb-4">Collected Coins</h2>
@@ -566,6 +569,7 @@ export default function DirectAnalyticsPage() {
               </div>
             </Card>
           )}
+          */}
         </div>
       )}
     </div>
