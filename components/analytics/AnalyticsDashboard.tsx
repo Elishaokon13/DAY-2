@@ -494,7 +494,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
                       onClick={() => setCurrentPage(totalPages)}
                       variant="outline"
                       size="sm"
-                      className="h-8 w-8 p-0"
+                      className="h-8 w-8 p-0 bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400"
                     >
                       {totalPages}
                     </Button>
