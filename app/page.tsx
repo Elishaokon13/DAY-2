@@ -109,18 +109,11 @@ export default function App() {
         </header>
 
         <main className="flex-1">
-          {viewMode === "tokens" ? (
-            <ZoraWalletInput
-              displayName={context?.user?.displayName || ""}
-              onHandleChange={(handle) => setZoraHandle(handle)}
-              onViewAnalytics={handleViewAnalytics}
-            />
-          ) : (
-            <AnalyticsDashboard
-              handle={zoraHandle}
-              onBack={handleBackToTokens}
-            />
-          )}
+          <ZoraWalletInput
+            displayName={context?.user?.displayName || ""}
+            onHandleChange={(handle) => setZoraHandle(handle)}
+            onViewAnalytics={handleViewAnalytics}
+          />
         </main>
 
         <footer className="mt-2 pt-4 flex justify-center">
