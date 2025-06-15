@@ -19,46 +19,6 @@ import {
 } from "recharts";
 import { formatCompactNumber } from "@/lib/utils";
 
-// Define new API response type
-interface AnalyticsResults {
-  profile: {
-    handle: string;
-    displayName?: string;
-    bio?: string;
-    avatar?: string;
-    publicWallet?: string;
-  };
-  metrics: {
-    totalEarnings: number;
-    totalVolume: number;
-    posts: number;
-    averageEarningsPerPost: number;
-  };
-  coins: {
-    created: {
-      count: number;
-      items: Array<{
-        name: string;
-        symbol: string;
-        address: string;
-        balance: number;
-        uniqueHolders: number;
-        totalVolume: number;
-        estimatedEarnings: number;
-      }>;
-    };
-    collected: {
-      count: number;
-      items: Array<any>;
-    };
-  };
-  holderVsTrader: {
-    totalHolders: number;
-    estimatedCollectors: number;
-    estimatedTraders: number;
-    coinBreakdown: any[];
-  };
-}
 
 interface ShareableAnalyticsCardProps {
   handle: string;
@@ -85,14 +45,40 @@ export function ShareableAnalyticsCard({
     "idle" | "capturing" | "uploading" | "ready" | "sharing" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [imgError, setImgError] = useState<boolean>(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Handle image error
-  const handleImageError = () => {
-    console.log("Image failed to load, using fallback");
-    setImgError(true);
-  };
+const captureImage = async (): Promise<string | null> => {
+  if (!cardRef.current) {
+    setErrorMessage("Card element not found");
+    return null;
+  }
+
+  try {
+    // Add a small delay to ensure DOM is ready
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const dataUrl = await htmlToImage.toPng(cardRef.current, {
+      quality: 1.0,
+      pixelRatio: 2,
+      cacheBust: true,
+      backgroundColor: "#0f1121",
+      width: cardRef.current.offsetWidth,
+      height: cardRef.current.offsetHeight,
+      // Add these options for better compatibility
+      skipAutoScale: true,
+      // useCORS: true,
+      // allowTaint: true,
+    });
+
+    return dataUrl;
+  } catch (error) {
+    console.error("Image capture failed:", error);
+    setErrorMessage(
+      `Failed to capture image: ${"Unknown error"}`,
+    );
+    return null;
+  }
+};
 
   const barChartData = sorted?.map((item) => {
     const earnings = parseFloat(
@@ -107,173 +93,127 @@ export function ShareableAnalyticsCard({
     };
   });
 
-  // Download the card as an image
-  const downloadImage = async () => {
-    if (!cardRef.current) return;
+const downloadImage = async () => {
+  setShareStatus("capturing");
+  setErrorMessage(null);
 
-    setShareStatus("capturing");
-    setErrorMessage(null);
-
-    try {
-      const dataUrl = await htmlToImage.toPng(cardRef.current, {
-        quality: 1.0,
-        pixelRatio: 2,
-        cacheBust: true,
-        backgroundColor: "#0f1121",
-        style: {
-          borderRadius: "8px",
-          overflow: "hidden",
-        },
-      });
-
-      // Create download link
-      const link = document.createElement("a");
-      link.download = `${handle}-zora-analytics.png`;
-      link.href = dataUrl;
-      link.click();
-
-      setShareStatus("idle");
-    } catch (error) {
-      console.error("❌ Failed to capture image:", error);
+  try {
+    const dataUrl = await captureImage();
+    if (!dataUrl) {
       setShareStatus("error");
-      setErrorMessage(
-        error instanceof Error ? error.message : "Unknown error occurred",
-      );
+      setErrorMessage("Failed to capture image for download");
+      return;
     }
-  };
 
+    // Convert data URL to blob for better browser compatibility
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+
+    // Create object URL from blob
+    const blobUrl = URL.createObjectURL(blob);
+
+    // Create and trigger download
+    const link = document.createElement("a");
+    link.download = `${handle}-zora-analytics.png`;
+    link.href = blobUrl;
+
+    // Append to body, click, then remove (for better browser compatibility)
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Clean up the object URL
+    URL.revokeObjectURL(blobUrl);
+
+    setShareStatus("idle");
+  } catch (error) {
+    console.error("Download failed:", error);
+    setErrorMessage("Download failed. Please try again.");
+    setShareStatus("error");
+  }
+};
   // Share to Twitter
-  const shareToTwitter = async () => {
-    if (!cardRef.current || !profile) return;
+const shareToTwitter = async () => {
+  setShareStatus("capturing");
+  setErrorMessage(null);
 
-    setShareStatus("capturing");
-    setErrorMessage(null);
+  const dataUrl = await captureImage();
+  if (!dataUrl) return setShareStatus("error");
 
-    try {
-      const dataUrl = await htmlToImage.toPng(cardRef.current, {
-        quality: 1.0,
-        pixelRatio: 2,
-        cacheBust: true,
-        backgroundColor: "#0f1121",
-      });
+  setShareStatus("uploading");
 
-      // Upload to server
-      setShareStatus("uploading");
+  try {
+    const res = await fetch("/api/save-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        displayName: profile.displayName || handle,
+        imageData: dataUrl,
+      }),
+    });
 
-      const saveRes = await fetch("/api/save-image", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          displayName: profile.displayName || handle,
-          imageData: dataUrl,
-        }),
-      });
+    const { blobUrl } = await res.json();
 
-      if (!saveRes.ok) {
-        const errorText = await saveRes.text();
-        throw new Error(`Image save failed: ${saveRes.status} - ${errorText}`);
-      }
+    const text = `Check out my creator analytics on Zora!`;
+    const frameUrl = `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+      text,
+    )}&url=${encodeURIComponent(frameUrl)}`;
 
-      const { blobUrl } = await saveRes.json();
-
-      // Open Twitter share dialog
-      const text = `Check out my creator analytics on Zora! Not financial advice. Just vibes.`;
-      const url = encodeURIComponent(
-        `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`,
-      );
-      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`;
-
-      window.open(twitterUrl, "_blank");
-      setShareStatus("idle");
-    } catch (error) {
-      console.error("❌ Failed to share to Twitter:", error);
-      setShareStatus("error");
-      setErrorMessage(
-        error instanceof Error ? error.message : "Unknown error occurred",
-      );
-    }
-  };
-
+    window.open(twitterUrl, "_blank");
+    setShareStatus("idle");
+  } catch (err) {
+    console.error("Twitter share error:", err);
+    setErrorMessage("Twitter share failed.");
+    setShareStatus("error");
+  }
+};
   // Share to Warpcast
-  const shareToWarpcast = async () => {
-    if (!cardRef.current || !profile) return;
+const shareToFarcaster = async () => {
+  setShareStatus("capturing");
+  setErrorMessage(null);
 
-    setShareStatus("capturing");
-    setErrorMessage(null);
+  const dataUrl = await captureImage();
+  if (!dataUrl) return setShareStatus("error");
 
-    try {
-      const dataUrl = await htmlToImage.toPng(cardRef.current, {
-        quality: 1.0,
-        pixelRatio: 2,
-        cacheBust: true,
-        backgroundColor: "#0f1121",
+  setShareStatus("uploading");
+
+  try {
+    const res = await fetch("/api/save-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        displayName: profile.displayName || handle,
+        imageData: dataUrl,
+      }),
+    });
+
+    const { blobUrl } = await res.json();
+    const castUrl = `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`;
+    const farcaster = (window as any).farcaster?.sdk;
+
+    if (farcaster?.actions?.composeCast) {
+      await farcaster.actions.composeCast({
+        text: "Check out my creator analytics on Zora!",
+        embeds: [castUrl],
       });
-
-      // Upload to server
-      setShareStatus("uploading");
-
-      const saveRes = await fetch("/api/save-image", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          displayName: profile.displayName || handle,
-          imageData: dataUrl,
-        }),
-      });
-
-      if (!saveRes.ok) {
-        const errorText = await saveRes.text();
-        throw new Error(`Image save failed: ${saveRes.status} - ${errorText}`);
-      }
-
-      const { blobUrl } = await saveRes.json();
-
-      // Try to use Farcaster SDK if available
-      try {
-        const sdk = (window as any).farcaster?.sdk;
-        if (sdk && sdk.actions && sdk.actions.composeCast) {
-          await sdk.actions.composeCast({
-            text: "Check out my creator analytics on Zora! Not financial advice. Just vibes.",
-            embeds: [
-              `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`,
-            ],
-          });
-        } else {
-          // Fallback to Warpcast website
-          const text = `Check out my creator analytics on Zora! Not financial advice. Just vibes.`;
-          const url = encodeURIComponent(
-            `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`,
-          );
-          const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&url=${url}`;
-          window.open(warpcastUrl, "_blank");
-        }
-      } catch (error) {
-        console.error("Error using Farcaster SDK:", error);
-        // Fallback to Warpcast website
-        const text = `Check out my creator analytics on Zora! Not financial advice. Just vibes.`;
-        const url = encodeURIComponent(
-          `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`,
-        );
-        const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&url=${url}`;
-        window.open(warpcastUrl, "_blank");
-      }
-
-      setShareStatus("idle");
-    } catch (error) {
-      console.error("❌ Failed to share to Warpcast:", error);
-      setShareStatus("error");
-      setErrorMessage(
-        error instanceof Error ? error.message : "Unknown error occurred",
-      );
+    } else {
+      const fallbackUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(
+        "Check out my creator analytics on Zora!",
+      )}&url=${encodeURIComponent(castUrl)}`;
+      window.open(fallbackUrl, "_blank");
     }
-  };
+
+    setShareStatus("idle");
+  } catch (err) {
+    console.error("Farcaster share error:", err);
+    setErrorMessage("Farcaster share failed.");
+    setShareStatus("error");
+  }
+};
 
   // Button text based on status
-  const getButtonText = (type: "download" | "twitter" | "warpcast") => {
+  const getButtonText = (type: "download" | "twitter" | "farcaster") => {
     if (shareStatus !== "idle" && shareStatus !== "error") {
       switch (shareStatus) {
         case "capturing":
@@ -292,7 +232,7 @@ export function ShareableAnalyticsCard({
         return "Download Image";
       case "twitter":
         return "Share to Twitter";
-      case "warpcast":
+      case "farcaster":
         return "Share to Warpcast";
     }
   };
@@ -391,7 +331,7 @@ export function ShareableAnalyticsCard({
       </div>
 
       {/* Share buttons */}
-      <div className="flex flex-wrap justify-center gap-3">
+      {/* <div className="flex flex-wrap justify-center gap-3">
         <Button
           onClick={downloadImage}
           disabled={["capturing", "uploading", "sharing"].includes(shareStatus)}
@@ -411,14 +351,14 @@ export function ShareableAnalyticsCard({
         </Button>
 
         <Button
-          onClick={shareToWarpcast}
+          onClick={shareToFarcaster}
           disabled={["capturing", "uploading", "sharing"].includes(shareStatus)}
           className="bg-[#8A63D2] hover:bg-[#7d5bc7] text-white"
           size="sm"
         >
-          {getButtonText("warpcast")}
+          {getButtonText("farcaster")}
         </Button>
-      </div>
+      </div> */}
 
       {errorMessage && (
         <p className="text-red-500 text-xs text-center mt-2">{errorMessage}</p>
