@@ -9,6 +9,7 @@ import { ShareableAnalyticsCard } from "./ShareableAnalyticsCard";
 import { Icon } from "@/components/ui/Icon";
 import { getProfile, getProfileBalances, getCoin } from "@zoralabs/coins-sdk";
 import { useRouter } from "next/navigation";
+import { useZoraProfile } from "../hooks/getUserProfile";
 
 // Define types for the new API response
 interface AnalyticsResults {
@@ -73,41 +74,36 @@ interface AnalyticsDashboardProps {
 
 export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
   const [creatorData, setCreatorData] = useState<AnalyticsResults | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedCoin, setSelectedCoin] = useState<string | null>(null);
   const [showShareableCard, setShowShareableCard] = useState<boolean>(false);
 
-  useEffect(() => {
-    async function fetchProfileData() {
-      if (!handle) return;
-      setLoading(true);
-      setError(null);
-      try {
-        console.log(`Fetching profile data for handle: ${handle}`);
-        const profileData = await getProfile({ identifier: handle });
-        const ProfileBalance = await getProfileBalances({
-          identifier: handle,
-          count: 100,
-        });
-        console.log("Profile data fetched:", profileData?.data);
-        console.log("Profile balance fetched:", ProfileBalance);
-      } catch (err) {
-        console.error("Failed to fetch profile data:", err);
-        setError("Failed to load profile data. Please try again.");
-      }
-    }
+  const { profile, loading: isLoadingProfile, error } = useZoraProfile(handle);
 
-    fetchProfileData();
-  }, [handle]);
+  // useEffect(() => {
+  //   async function fetchProfileData() {
+  //     if (!handle) return;
+  //     try {
+  //       console.log(`Fetching profile data for handle: ${handle}`);
+  //       const profileData = await getProfile({ identifier: handle });
+  //       const ProfileBalance = await getProfileBalances({
+  //         identifier: handle,
+  //         count: 100,
+  //       });
+  //       console.log("Profile data fetched:", profileData?.data);
+  //       console.log("Profile balance fetched:", ProfileBalance);
+  //     } catch (err) {
+  //       console.error("Failed to fetch profile data:", err);
+  //       // setError("Failed to load profile data. Please try again.");
+  //     }
+  //   }
+
+  //   fetchProfileData();
+  // }, [handle]);
 
   // Initial data load - fast load with limited data
   useEffect(() => {
     async function fetchInitialData() {
       if (!handle) return;
-
-      setLoading(true);
-      setError(null);
 
       try {
         console.log(`Fetching initial data for handle: ${handle}`);
@@ -132,9 +128,9 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
         }
       } catch (err) {
         console.error("Failed to fetch initial creator data:", err);
-        setError("Failed to load creator data. Please try again.");
+        // setError("Failed to load creator data. Please try again.");
       } finally {
-        setLoading(false);
+        // setLoading(false);
       }
     }
 
@@ -150,7 +146,7 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
     }
   };
 
-  if (loading) {
+  if (isLoadingProfile) {
     return (
       <div className="p-6 animate-pulse">
         <div className="h-8 bg-gray-700 rounded w-1/3 mb-8"></div>
@@ -169,7 +165,7 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
     return (
       <div className="p-6 text-red-500">
         <h2 className="text-xl font-mono mb-4">Error Loading Analytics</h2>
-        <p>{error}</p>
+        <p>{error.message}</p>
 
         <Button variant="outline" className="mt-4" onClick={handleGoBack}>
           Go Back
@@ -280,39 +276,23 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
         {/* Creator Profile */}
         <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700">
           <div className="flex items-start gap-4">
-            {creatorData.profile.avatar ? (
-              <div className="w-16 h-16 rounded-full overflow-hidden relative">
-                <img
-                  src={creatorData.profile.avatar}
-                  alt={
-                    creatorData.profile.displayName ||
-                    creatorData.profile.handle
-                  }
-                  className="object-cover w-full h-full"
-                />
-              </div>
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-lime-900/20 flex items-center justify-center">
-                <span className="text-lime-500 text-xl font-bold">
-                  {(
-                    creatorData.profile.displayName ||
-                    creatorData.profile.handle
-                  )
-                    ?.charAt(0)
-                    ?.toUpperCase() || "Z"}
-                </span>
-              </div>
-            )}
+            <div className="w-16 h-16 rounded-full overflow-hidden relative">
+              <img
+                src={profile?.avatar?.medium || profile?.avatar?.small}
+                alt={
+                  profile?.displayName || profile?.handle || "Creator Avatar"
+                }
+                className="object-cover w-full h-full"
+              />
+            </div>
 
             <div>
               <h2 className="text-xl font-mono text-white">
-                {creatorData.profile.displayName || creatorData.profile.handle}
+                {profile.displayName}
               </h2>
-              <p className="text-gray-400">@{creatorData.profile.handle}</p>
-              {creatorData.profile.bio && (
-                <p className="text-gray-400 mt-2 text-sm">
-                  {creatorData.profile.bio}
-                </p>
+              <p className="text-gray-400">@{profile.handle}</p>
+              {profile.bio && (
+                <p className="text-gray-400 mt-2 text-sm">{profile.bio}</p>
               )}
             </div>
           </div>
