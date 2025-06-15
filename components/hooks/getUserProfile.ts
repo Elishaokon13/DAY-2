@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { getProfile } from "@zoralabs/coins-sdk";
 
-export function useZoraProfile(address?: string) {
+export function useUserProfile(address?: string) {
   const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);

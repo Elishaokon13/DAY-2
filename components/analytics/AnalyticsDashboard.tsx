@@ -6,7 +6,8 @@ import { Button } from "../ui/button";
 import { ShareableAnalyticsCard } from "./ShareableAnalyticsCard";
 import { Icon } from "@/components/ui/Icon";
 import { useRouter } from "next/navigation";
-import { useZoraProfile } from "../hooks/getUserProfile";
+import { useUserProfile } from "../hooks/getUserProfile";
+import { useUserBalances } from "../hooks/getUserBalance";
 
 // Define types for the new API response
 interface AnalyticsResults {
@@ -74,28 +75,11 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
   const [selectedCoin, setSelectedCoin] = useState<string | null>(null);
   const [showShareableCard, setShowShareableCard] = useState<boolean>(false);
 
-  const { profile, loading: isLoadingProfile, error } = useZoraProfile(handle);
+  const { profile, loading: isLoadingProfile, error } = useUserProfile(handle);
+  const { balances, isLoadingBalance, isBalanceError } =
+    useUserBalances(handle);
 
-  // useEffect(() => {
-  //   async function fetchProfileData() {
-  //     if (!handle) return;
-  //     try {
-  //       console.log(`Fetching profile data for handle: ${handle}`);
-  //       const profileData = await getProfile({ identifier: handle });
-  //       const ProfileBalance = await getProfileBalances({
-  //         identifier: handle,
-  //         count: 100,
-  //       });
-  //       console.log("Profile data fetched:", profileData?.data);
-  //       console.log("Profile balance fetched:", ProfileBalance);
-  //     } catch (err) {
-  //       console.error("Failed to fetch profile data:", err);
-  //       // setError("Failed to load profile data. Please try again.");
-  //     }
-  //   }
-
-  //   fetchProfileData();
-  // }, [handle]);
+  // console.log("Balances:", balances);
 
   // Initial data load - fast load with limited data
   useEffect(() => {
@@ -257,7 +241,7 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
       <div className="grid gap-6">
         {/* Creator Profile */}
         {isLoadingProfile ? (
-          <div className="h-34 bg-gray-700 animate-pulse rounded"></div>
+          <div className="h-36 bg-gray-700 animate-pulse rounded"></div>
         ) : (
           <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700">
             <div className="flex items-start gap-4">
@@ -287,43 +271,47 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
         )}
 
         {/* Creator Earnings */}
-        <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-[#13151F] p-3 rounded-lg">
-              <p className="text-gray-400 text-xs mb-1 font-mono">
-                TOTAL EARNINGS
-              </p>
-              <p className="text-lime-400 text-xl font-bold">
-                ${creatorData?.metrics?.totalEarnings.toFixed(2)}
-              </p>
-            </div>
+        {isLoadingBalance ? (
+          <div className="h-36 bg-gray-700 animate-pulse rounded"></div>
+        ) : (
+          <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-[#13151F] p-3 rounded-lg">
+                <p className="text-gray-400 text-xs mb-1 font-mono">
+                  TOTAL EARNINGS
+                </p>
+                <p className="text-lime-400 text-xl font-bold">
+                  ${creatorData?.metrics?.totalEarnings.toFixed(2)}
+                </p>
+              </div>
 
-            <div className="bg-[#13151F] p-3 rounded-lg">
-              <p className="text-gray-400 text-xs mb-1 font-mono">
-                TRADING VOLUME
-              </p>
-              <p className="text-white text-xl font-bold">
-                ${creatorData?.metrics?.totalVolume.toFixed(2)}
-              </p>
-            </div>
+              <div className="bg-[#13151F] p-3 rounded-lg">
+                <p className="text-gray-400 text-xs mb-1 font-mono">
+                  TRADING VOLUME
+                </p>
+                <p className="text-white text-xl font-bold">
+                  ${creatorData?.metrics?.totalVolume.toFixed(2)}
+                </p>
+              </div>
 
-            <div className="bg-[#13151F] p-3 rounded-lg">
-              <p className="text-gray-400 text-xs mb-1 font-mono">POSTS</p>
-              <p className="text-white text-xl font-bold">
-                {creatorData?.metrics?.posts}
-              </p>
-            </div>
+              <div className="bg-[#13151F] p-3 rounded-lg">
+                <p className="text-gray-400 text-xs mb-1 font-mono">POSTS</p>
+                <p className="text-white text-xl font-bold">
+                  {creatorData?.metrics?.posts}
+                </p>
+              </div>
 
-            <div className="bg-[#13151F] p-3 rounded-lg">
-              <p className="text-gray-400 text-xs mb-1 font-mono">
-                AVG EARNINGS/POST
-              </p>
-              <p className="text-white text-xl font-bold">
-                ${creatorData?.metrics?.averageEarningsPerPost.toFixed(2)}
-              </p>
+              <div className="bg-[#13151F] p-3 rounded-lg">
+                <p className="text-gray-400 text-xs mb-1 font-mono">
+                  AVG EARNINGS/POST
+                </p>
+                <p className="text-white text-xl font-bold">
+                  ${creatorData?.metrics?.averageEarningsPerPost.toFixed(2)}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Detailed Analytics for Selected Coin */}
         {/* {selectedCoin && (
