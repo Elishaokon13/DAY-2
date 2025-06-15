@@ -8,7 +8,7 @@ import { Icon } from "@/components/ui/Icon";
 import { useRouter } from "next/navigation";
 import { useUserProfile } from "../hooks/getUserProfile";
 import { useUserBalances } from "../hooks/getUserBalance";
-import { formatNumberWithCommas } from "@/lib/utils";
+import { formatCompactNumber } from "@/lib/utils";
 import { UserStats } from "./UserStats";
 import { TimelineChart } from "./TimelineChart";
 
@@ -84,12 +84,12 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
     totalEarnings,
     totalPosts,
     totalVolume,
+    totalHolders,
     isLoadingBalance,
     isBalanceError,
   } = useUserBalances(handle);
 
   console.log(balances);
-  
 
   const avgTotalEarnings = Number(totalEarnings) / Number(totalPosts || 1);
 
@@ -293,7 +293,7 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
                   TOTAL EARNINGS
                 </p>
                 <p className="text-lime-400 text-xl font-bold">
-                  ${formatNumberWithCommas(totalEarnings.toFixed(2))}
+                  ${formatCompactNumber(Number(totalEarnings.toFixed(2)))}
                 </p>
               </div>
 
@@ -302,7 +302,7 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
                   TRADING VOLUME
                 </p>
                 <p className="text-white text-xl font-bold">
-                  ${formatNumberWithCommas(totalVolume.toFixed(2))}
+                  ${formatCompactNumber(Number(totalVolume.toFixed(2)))}
                 </p>
               </div>
 
@@ -316,7 +316,7 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
                   AVG EARNINGS/POST
                 </p>
                 <p className="text-white text-xl font-bold">
-                  ${formatNumberWithCommas(avgTotalEarnings.toFixed(2))}
+                  ${formatCompactNumber(Number(avgTotalEarnings.toFixed(2)))}
                 </p>
               </div>
             </div>
@@ -326,7 +326,7 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
         {/* Detailed Analytics for Selected Coin */}
         {selectedCoin && (
           <div className="grid md:grid-cols-2 gap-6">
-            <UserStats coinAddress={selectedCoin} />
+            <UserStats totalHolders={totalHolders} coinAddress={selectedCoin} />
             <TimelineChart coinAddress={selectedCoin} />
           </div>
         )}

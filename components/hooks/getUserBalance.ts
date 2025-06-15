@@ -13,6 +13,7 @@ export function useUserBalances(address?: string) {
   const [totalPosts, setTotalPosts] = useState(0);
   const [totalVolume, setTotalVolume] = useState(0);
   const [totalEarnings, setTotalEarnings] = useState(0);
+  const [totalHolders, setTotalHolders] = useState(0);
 
   useEffect(() => {
     if (!address) return;
@@ -51,11 +52,16 @@ export function useUserBalances(address?: string) {
           const earning = item?.node?.coin?.creatorEarnings?.[0]?.amountUsd;
           return acc + parseFloat(earning || "0");
         }, 0);
+        const uniqueHolders = sorted.reduce((acc, item) => {
+          const earning = item?.node?.coin?.uniqueHolders || "0";
+          return acc + parseFloat(String(earning) || "0");
+        }, 0);
 
         setSorted(sorted);
         setTotalVolume(totalVolume);
         setTotalEarnings(totalEarnings);
         setTotalPosts(sorted?.length);
+        setTotalHolders(uniqueHolders);
         // console.log("Sorted by volume:", sorted?.length);
         // console.log("Total Trading Volume:", totalVolume);
         // console.log("Total Creator Earnings (USD):", totalEarnings);
@@ -77,5 +83,6 @@ export function useUserBalances(address?: string) {
     totalVolume,
     totalEarnings,
     totalPosts,
+    totalHolders,
   };
 }

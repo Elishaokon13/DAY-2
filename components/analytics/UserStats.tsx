@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Card } from "../ui/card";
-import { CollectorStatsResponse } from "@/app/api/collector-stats/route";
 import {
   PieChart,
   Pie,
@@ -14,6 +13,7 @@ import {
 
 interface UserStatsProps {
   coinAddress: string;
+  totalHolders: number;
 }
 
 interface UserStatsData {
@@ -25,7 +25,7 @@ interface UserStatsData {
   symbol: string;
 }
 
-export function UserStats({ coinAddress }: UserStatsProps) {
+export function UserStats({ coinAddress, totalHolders }: UserStatsProps) {
   const [statsData, setStatsData] = useState<UserStatsData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -161,11 +161,8 @@ export function UserStats({ coinAddress }: UserStatsProps) {
       </h2>
 
       <div className="mb-6">
-        <p className="text-gray-400 font-mono text-sm mb-2">
-          {statsData.name} ({statsData.symbol})
-        </p>
         <p className="text-white font-mono text-sm">
-          Total Holders: {statsData.totalUsers}
+          Total Holders: {totalHolders}
         </p>
       </div>
 
@@ -240,13 +237,6 @@ export function UserStats({ coinAddress }: UserStatsProps) {
             users
           </p>
         </div>
-      </div>
-
-      <div className="mt-4 text-gray-500 text-xs italic">
-        <p>
-          * Collector/trader classification is based on estimated holding
-          patterns
-        </p>
       </div>
     </Card>
   );
