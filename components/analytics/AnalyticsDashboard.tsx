@@ -2,12 +2,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { UserStats } from "./UserStats";
-import { TimelineChart } from "./TimelineChart";
 import { Button } from "../ui/button";
 import { ShareableAnalyticsCard } from "./ShareableAnalyticsCard";
 import { Icon } from "@/components/ui/Icon";
-import { getProfile, getProfileBalances, getCoin } from "@zoralabs/coins-sdk";
 import { useRouter } from "next/navigation";
 import { useZoraProfile } from "../hooks/getUserProfile";
 
@@ -146,20 +143,20 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
     }
   };
 
-  if (isLoadingProfile) {
-    return (
-      <div className="p-6 animate-pulse">
-        <div className="h-8 bg-gray-700 rounded w-1/3 mb-8"></div>
-        <div className="grid gap-6">
-          <div className="h-64 bg-gray-700 rounded"></div>
-          <div className="grid grid-cols-2 gap-6">
-            <div className="h-64 bg-gray-700 rounded"></div>
-            <div className="h-64 bg-gray-700 rounded"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // if (isLoadingProfile) {
+  //   return (
+  //     <div className="p-6 animate-pulse">
+  //       <div className="h-8 bg-gray-700 rounded w-1/3 mb-8"></div>
+  //       <div className="grid gap-6">
+  //         <div className="h-64 bg-gray-700 rounded"></div>
+  //         <div className="grid grid-cols-2 gap-6">
+  //           <div className="h-64 bg-gray-700 rounded"></div>
+  //           <div className="h-64 bg-gray-700 rounded"></div>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   if (error) {
     return (
@@ -174,50 +171,35 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
     );
   }
 
-  // If no data is available
-  if (!creatorData) {
-    return (
-      <div className="p-6 text-red-500">
-        <h2 className="text-xl font-mono mb-4">No Data Available</h2>
-        <p>Unable to load creator data.</p>
-
-        <Button variant="outline" className="mt-4" onClick={handleGoBack}>
-          Go Back
-        </Button>
-      </div>
-    );
-  }
-
   // If no coins created yet
-  if (
-    !creatorData.coins.created.items ||
-    creatorData.coins.created.items.length === 0
-  ) {
-    return (
-      <div className="p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="cursor-pointer" onClick={() => handleGoBack()}>
-            <Icon name="arrowLeft" size="sm" className="mr-1 text-lime-400" />
-          </div>
-          <h2 className="text-2xl font-mono text-lime-500">
-            Creator Analytics
-          </h2>
-        </div>
-        <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700">
-          <p className="text-white mb-4">
-            No creator coins found for @{handle}
-          </p>
-          <p className="text-gray-400 mb-6">
-            Once you create coins on Zora, your earnings analytics will appear
-            here.
-          </p>
-          <Button variant="outline" onClick={handleGoBack}>
-            Go Back
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  // if (
+  //   !profile
+  // ) {
+  //   return (
+  //     <div className="p-6">
+  //       <div className="flex items-center gap-3 mb-6">
+  //         <div className="cursor-pointer" onClick={() => handleGoBack()}>
+  //           <Icon name="arrowLeft" size="sm" className="mr-1 text-lime-400" />
+  //         </div>
+  //         <h2 className="text-2xl font-mono text-lime-500">
+  //           Creator Analytics
+  //         </h2>
+  //       </div>
+  //       <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700">
+  //         <p className="text-white mb-4">
+  //           No creator coins found for @{handle}
+  //         </p>
+  //         <p className="text-gray-400 mb-6">
+  //           Once you create coins on Zora, your earnings analytics will appear
+  //           here.
+  //         </p>
+  //         <Button variant="outline" onClick={handleGoBack}>
+  //           Go Back
+  //         </Button>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   // Toggle between analytics dashboard and shareable card
   if (showShareableCard) {
@@ -274,36 +256,45 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
 
       <div className="grid gap-6">
         {/* Creator Profile */}
-        <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700">
-          <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-full overflow-hidden relative">
-              <img
-                src={profile?.avatar?.medium || profile?.avatar?.small}
-                alt={
-                  profile?.displayName || profile?.handle || "Creator Avatar"
-                }
-                className="object-cover w-full h-full"
-              />
-            </div>
+        {isLoadingProfile ? (
+          <div className="h-34 bg-gray-700 animate-pulse rounded"></div>
+        ) : (
+          <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700">
+            <div className="flex items-start gap-4">
+              <div className="w-16 h-16 rounded-full overflow-hidden relative">
+                <img
+                  src={profile?.avatar?.medium || profile?.avatar?.small}
+                  alt={
+                    profile?.displayName || profile?.handle || "Creator Avatar"
+                  }
+                  className="object-cover w-full h-full"
+                />
+              </div>
 
-            <div>
-              <h2 className="text-xl font-mono text-white">
-                {profile.displayName}
-              </h2>
-              <p className="text-gray-400">@{profile.handle}</p>
-              {profile.bio && (
-                <p className="text-gray-400 mt-2 text-sm">{profile.bio}</p>
-              )}
+              <div>
+                <h2 className="text-xl font-mono text-white">
+                  {profile?.displayName}
+                </h2>
+                <p className="text-gray-400">@{profile?.handle}</p>
+                {profile?.bio && (
+                  <p className="text-gray-400 mt-2 normal-case text-sm">
+                    {profile?.bio}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
+        )}
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+        {/* Creator Earnings */}
+        <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-[#13151F] p-3 rounded-lg">
               <p className="text-gray-400 text-xs mb-1 font-mono">
                 TOTAL EARNINGS
               </p>
               <p className="text-lime-400 text-xl font-bold">
-                ${creatorData.metrics.totalEarnings.toFixed(2)}
+                ${creatorData?.metrics?.totalEarnings.toFixed(2)}
               </p>
             </div>
 
@@ -312,14 +303,14 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
                 TRADING VOLUME
               </p>
               <p className="text-white text-xl font-bold">
-                ${creatorData.metrics.totalVolume.toFixed(2)}
+                ${creatorData?.metrics?.totalVolume.toFixed(2)}
               </p>
             </div>
 
             <div className="bg-[#13151F] p-3 rounded-lg">
               <p className="text-gray-400 text-xs mb-1 font-mono">POSTS</p>
               <p className="text-white text-xl font-bold">
-                {creatorData.metrics.posts}
+                {creatorData?.metrics?.posts}
               </p>
             </div>
 
@@ -328,19 +319,19 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
                 AVG EARNINGS/POST
               </p>
               <p className="text-white text-xl font-bold">
-                ${creatorData.metrics.averageEarningsPerPost.toFixed(2)}
+                ${creatorData?.metrics?.averageEarningsPerPost.toFixed(2)}
               </p>
             </div>
           </div>
         </div>
 
         {/* Detailed Analytics for Selected Coin */}
-        {selectedCoin && (
+        {/* {selectedCoin && (
           <div className="grid md:grid-cols-2 gap-6">
             <UserStats coinAddress={selectedCoin} />
             <TimelineChart coinAddress={selectedCoin} />
           </div>
-        )}
+        )} */}
       </div>
 
       <div className="mt-8 text-gray-500 text-center text-xs">
