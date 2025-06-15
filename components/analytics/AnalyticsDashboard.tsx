@@ -8,6 +8,9 @@ import { Icon } from "@/components/ui/Icon";
 import { useRouter } from "next/navigation";
 import { useUserProfile } from "../hooks/getUserProfile";
 import { useUserBalances } from "../hooks/getUserBalance";
+import { formatNumberWithCommas } from "@/lib/utils";
+import { UserStats } from "./UserStats";
+import { TimelineChart } from "./TimelineChart";
 
 // Define types for the new API response
 interface AnalyticsResults {
@@ -76,10 +79,19 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
   const [showShareableCard, setShowShareableCard] = useState<boolean>(false);
 
   const { profile, loading: isLoadingProfile, error } = useUserProfile(handle);
-  const { balances, isLoadingBalance, isBalanceError } =
-    useUserBalances(handle);
+  const {
+    balances,
+    totalEarnings,
+    totalPosts,
+    totalVolume,
+    isLoadingBalance,
+    isBalanceError,
+  } = useUserBalances(handle);
 
-  // console.log("Balances:", balances);
+  console.log(balances);
+  
+
+  const avgTotalEarnings = Number(totalEarnings) / Number(totalPosts || 1);
 
   // Initial data load - fast load with limited data
   useEffect(() => {
@@ -142,11 +154,11 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
   //   );
   // }
 
-  if (error) {
+  if (error || isBalanceError) {
     return (
       <div className="p-6 text-red-500">
         <h2 className="text-xl font-mono mb-4">Error Loading Analytics</h2>
-        <p>{error.message}</p>
+        {/* <p>{error.message}</p> */}
 
         <Button variant="outline" className="mt-4" onClick={handleGoBack}>
           Go Back
@@ -245,13 +257,13 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
         ) : (
           <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700">
             <div className="flex items-start gap-4">
-              <div className="w-16 h-16 rounded-full overflow-hidden relative">
+              <div className="!w-16 !h-16  rounded-full overflow-hidden relative">
                 <img
                   src={profile?.avatar?.medium || profile?.avatar?.small}
                   alt={
                     profile?.displayName || profile?.handle || "Creator Avatar"
                   }
-                  className="object-cover w-full h-full"
+                  className="object-cover !w-16 !h-16 w-full h-full"
                 />
               </div>
 
@@ -261,7 +273,7 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
                 </h2>
                 <p className="text-gray-400">@{profile?.handle}</p>
                 {profile?.bio && (
-                  <p className="text-gray-400 mt-2 normal-case text-sm">
+                  <p className="text-gray-400 mt-2 normal-case text-sm w-full max-w-[460px]">
                     {profile?.bio}
                   </p>
                 )}
@@ -281,7 +293,7 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
                   TOTAL EARNINGS
                 </p>
                 <p className="text-lime-400 text-xl font-bold">
-                  ${creatorData?.metrics?.totalEarnings.toFixed(2)}
+                  ${formatNumberWithCommas(totalEarnings.toFixed(2))}
                 </p>
               </div>
 
@@ -290,15 +302,13 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
                   TRADING VOLUME
                 </p>
                 <p className="text-white text-xl font-bold">
-                  ${creatorData?.metrics?.totalVolume.toFixed(2)}
+                  ${formatNumberWithCommas(totalVolume.toFixed(2))}
                 </p>
               </div>
 
               <div className="bg-[#13151F] p-3 rounded-lg">
                 <p className="text-gray-400 text-xs mb-1 font-mono">POSTS</p>
-                <p className="text-white text-xl font-bold">
-                  {creatorData?.metrics?.posts}
-                </p>
+                <p className="text-white text-xl font-bold">{totalPosts}</p>
               </div>
 
               <div className="bg-[#13151F] p-3 rounded-lg">
@@ -306,7 +316,7 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
                   AVG EARNINGS/POST
                 </p>
                 <p className="text-white text-xl font-bold">
-                  ${creatorData?.metrics?.averageEarningsPerPost.toFixed(2)}
+                  ${formatNumberWithCommas(avgTotalEarnings.toFixed(2))}
                 </p>
               </div>
             </div>
@@ -314,12 +324,12 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
         )}
 
         {/* Detailed Analytics for Selected Coin */}
-        {/* {selectedCoin && (
+        {selectedCoin && (
           <div className="grid md:grid-cols-2 gap-6">
             <UserStats coinAddress={selectedCoin} />
             <TimelineChart coinAddress={selectedCoin} />
           </div>
-        )} */}
+        )}
       </div>
 
       <div className="mt-8 text-gray-500 text-center text-xs">
