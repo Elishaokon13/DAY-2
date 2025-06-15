@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,9 +7,9 @@ import { TimelineChart } from "./TimelineChart";
 import { Button } from "../ui/button";
 
 import { ShareableAnalyticsCard } from "./ShareableAnalyticsCard";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Icon } from "@/components/ui/Icon";
 import { getProfile, getProfileBalances, getCoin } from "@zoralabs/coins-sdk";
+import { useRouter } from "next/navigation";
 
 // Define types for the new API response
 interface AnalyticsResults {
@@ -69,13 +70,9 @@ interface AnalyticsResults {
 
 interface AnalyticsDashboardProps {
   handle: string;
-  onBack?: () => void;
 }
 
-export function AnalyticsDashboard({
-  handle,
-  onBack,
-}: AnalyticsDashboardProps) {
+export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
   const [creatorData, setCreatorData] = useState<AnalyticsResults | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [initialLoadComplete, setInitialLoadComplete] =
@@ -87,7 +84,6 @@ export function AnalyticsDashboard({
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(10);
 
   useEffect(() => {
     async function fetchProfileData() {
@@ -220,30 +216,13 @@ export function AnalyticsDashboard({
     }
   };
 
-  // Pagination handlers
-  const totalPages = creatorData
-    ? Math.ceil(creatorData.coins.created.items.length / pageSize)
-    : 0;
-
-  const goToNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
+  const router = useRouter();
+  const handleGoBack = () => {
+    if (router) {
+      router.back();
+    } else {
+      window.history.back();
     }
-  };
-
-  const goToPrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  // Get paginated coins
-  const getPaginatedCoins = () => {
-    if (!creatorData) return [];
-
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    return creatorData.coins.created.items.slice(startIndex, endIndex);
   };
 
   if (loading) {
@@ -266,11 +245,10 @@ export function AnalyticsDashboard({
       <div className="p-6 text-red-500">
         <h2 className="text-xl font-mono mb-4">Error Loading Analytics</h2>
         <p>{error}</p>
-        {onBack && (
-          <Button variant="outline" className="mt-4" onClick={onBack}>
-            Go Back
-          </Button>
-        )}
+
+        <Button variant="outline" className="mt-4" onClick={handleGoBack}>
+          Go Back
+        </Button>
       </div>
     );
   }
@@ -281,11 +259,10 @@ export function AnalyticsDashboard({
       <div className="p-6 text-red-500">
         <h2 className="text-xl font-mono mb-4">No Data Available</h2>
         <p>Unable to load creator data.</p>
-        {onBack && (
-          <Button variant="outline" className="mt-4" onClick={onBack}>
-            Go Back
-          </Button>
-        )}
+
+        <Button variant="outline" className="mt-4" onClick={handleGoBack}>
+          Go Back
+        </Button>
       </div>
     );
   }
@@ -297,9 +274,14 @@ export function AnalyticsDashboard({
   ) {
     return (
       <div className="p-6">
-        <h2 className="text-2xl font-mono text-lime-500 mb-6">
-          Creator Analytics
-        </h2>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="cursor-pointer" onClick={() => handleGoBack()}>
+            <Icon name="arrowLeft" size="sm" className="mr-1 text-lime-400" />
+          </div>
+          <h2 className="text-2xl font-mono text-lime-500">
+            Creator Analytics
+          </h2>
+        </div>
         <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700">
           <p className="text-white mb-4">
             No creator coins found for @{handle}
@@ -308,11 +290,9 @@ export function AnalyticsDashboard({
             Once you create coins on Zora, your earnings analytics will appear
             here.
           </p>
-          {onBack && (
-            <Button variant="outline" onClick={onBack}>
-              Go Back
-            </Button>
-          )}
+          <Button variant="outline" onClick={handleGoBack}>
+            Go Back
+          </Button>
         </div>
       </div>
     );
@@ -351,7 +331,14 @@ export function AnalyticsDashboard({
   return (
     <div className="p-4 md:p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-mono text-lime-500">Creator Analytics</h2>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="cursor-pointer" onClick={() => handleGoBack()}>
+            <Icon name="arrowLeft" size="sm" className="mr-1 text-lime-400" />
+          </div>
+          <h2 className="text-2xl font-mono text-lime-500">
+            Creator Analytics
+          </h2>
+        </div>
         <div className="flex gap-2">
           <Button
             className="bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400 py-4 px-4 font-mono tracking-wider transition-colors duration-300"
@@ -361,17 +348,6 @@ export function AnalyticsDashboard({
           >
             <Icon name="share" size="sm" className="justify-center" />
           </Button>
-
-          {onBack && (
-            <Button
-              className="bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400 py-4 px-4 font-mono tracking-wider transition-colors duration-300"
-              variant="outline"
-              size="sm"
-              onClick={onBack}
-            >
-              <Icon name="search" size="sm" className="justify-center" />
-            </Button>
-          )}
         </div>
       </div>
 

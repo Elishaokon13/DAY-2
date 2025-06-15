@@ -11,13 +11,11 @@ import { useRouter } from "next/navigation";
 export interface ZoraWalletInputProps {
   displayName: string;
   onHandleChange?: (handle: string) => void;
-  onViewAnalytics?: (handle: string) => void;
 }
 
 export function ZoraWalletInput({
   displayName,
   onHandleChange,
-  onViewAnalytics,
 }: ZoraWalletInputProps) {
   const [handle, setHandle] = useState("");
   const [tokens, setTokens] = useState<ZoraToken[]>([]);
@@ -163,15 +161,13 @@ export function ZoraWalletInput({
                       {loading ? "CHECKING..." : "GENERATE COLLAGE"}
                     </button>
 
-                    {onViewAnalytics && (
-                      <button
-                        onClick={() => handleClick()}
-                        className="flex-1 items-center justify-center bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400 py-4 px-4 font-mono tracking-wider transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex"
-                      >
-                        <Icon name="barChart" size="sm" className="mr-2" />
-                        DIRECT ANALYTICS
-                      </button>
-                    )}
+                    <button
+                      onClick={() => handleClick()}
+                      className="flex-1 items-center justify-center bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400 py-4 px-4 font-mono tracking-wider transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex"
+                    >
+                      <Icon name="barChart" size="sm" className="mr-2" />
+                      DIRECT ANALYTICS
+                    </button>
                   </div>
                 </div>
               </div>
