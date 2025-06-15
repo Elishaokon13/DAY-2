@@ -1,12 +1,12 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { Collage } from '@/components/Collage/Collage'
-import { validateHandle } from '@/lib/validateWallet'
-import { ZoraTokenResponse, ZoraToken } from '@/app/api/zora-tokens/route'
-import { FooterButtons } from '@/components/FooterButtons'
-import { Button } from './ui/button'
-import { Icon } from './Icon'
+import { useState, useEffect } from "react";
+import { Collage } from "@/components/Collage/Collage";
+import { validateHandle } from "@/lib/validateWallet";
+import { ZoraTokenResponse, ZoraToken } from "@/app/api/zora-tokens/route";
+import { FooterButtons } from "@/components/FooterButtons";
+import { Button } from "./ui/button";
+import { Icon } from "./Icon";
 
 export interface ZoraWalletInputProps {
   displayName: string;
@@ -14,19 +14,23 @@ export interface ZoraWalletInputProps {
   onViewAnalytics?: (handle: string) => void;
 }
 
-export function ZoraWalletInput({ displayName, onHandleChange, onViewAnalytics }: ZoraWalletInputProps) {
-  const [handle, setHandle] = useState('')
-  const [tokens, setTokens] = useState<ZoraToken[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [isFocused, setIsFocused] = useState(false)
+export function ZoraWalletInput({
+  displayName,
+  onHandleChange,
+  onViewAnalytics,
+}: ZoraWalletInputProps) {
+  const [handle, setHandle] = useState("");
+  const [tokens, setTokens] = useState<ZoraToken[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const [profileData, setProfileData] = useState<{
-    displayName?: string
-    profileImage?: string | null
-    profileHandle?: string | null
-  } | null>(null)
+    displayName?: string;
+    profileImage?: string | null;
+    profileHandle?: string | null;
+  } | null>(null);
 
-  const [selectedToken, setSelectedToken] = useState<ZoraToken | null>(null)
+  const [selectedToken, setSelectedToken] = useState<ZoraToken | null>(null);
 
   // Notify parent when handle changes
   useEffect(() => {
@@ -36,65 +40,67 @@ export function ZoraWalletInput({ displayName, onHandleChange, onViewAnalytics }
   }, [handle, onHandleChange]);
 
   const handleSubmit = async () => {
-    const trimmedHandle = handle.trim()
+    const trimmedHandle = handle.trim();
 
     if (!validateHandle(trimmedHandle)) {
-      setError('Please enter a valid Zora handle')
-      return
+      setError("Please enter a valid Zora handle");
+      return;
     }
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
-      const res = await fetch(`/api/zora-tokens?handle=${encodeURIComponent(trimmedHandle)}`)
-      const data = await res.json() as ZoraTokenResponse
-      console.log(JSON.stringify(data, null, 2))
+      const res = await fetch(
+        `/api/zora-tokens?handle=${encodeURIComponent(trimmedHandle)}`,
+      );
+      const data = (await res.json()) as ZoraTokenResponse;
+      console.log(JSON.stringify(data, null, 2));
 
       if (res.status !== 200) {
-        setError('Failed to fetch profile data')
-        return
+        setError("Failed to fetch profile data");
+        return;
       }
 
       if (!data.tokens || data.tokens.length === 0) {
-        setError('No tokens found for this Zora handle.')
-        return
+        setError("No tokens found for this Zora handle.");
+        return;
       }
 
-      setTokens(data.tokens)
+      setTokens(data.tokens);
       setProfileData({
         displayName: data.displayName,
         profileImage: data.profileImage,
         profileHandle: data.profileHandle,
-      })
+      });
     } catch (err) {
-      console.error(err)
-      setError('Failed to fetch tokens. Please try again.')
+      console.error(err);
+      setError("Failed to fetch tokens. Please try again.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleReset = () => {
-    setTokens([])
-    setHandle('')
-    setError(null)
-    setProfileData(null)
-  }
+    setTokens([]);
+    setHandle("");
+    setError(null);
+    setProfileData(null);
+  };
 
   return (
     <>
       {tokens.length > 0 && profileData ? (
         <div className="w-full bg-black">
-          <Collage 
-            selectedToken={selectedToken} 
-            setSelectedToken={setSelectedToken} 
-            tokens={tokens} 
-            displayName={profileData.displayName || ''} 
+          <Collage
+            selectedToken={selectedToken}
+            setSelectedToken={setSelectedToken}
+            tokens={tokens}
+            displayName={profileData.displayName || ""}
           />
-          <FooterButtons 
-            onReset={handleReset} 
-            displayName={profileData.displayName || ''} 
+          <FooterButtons
+            onReset={handleReset}
+            displayName={profileData.displayName || ""}
           />
         </div>
       ) : (
@@ -109,13 +115,17 @@ export function ZoraWalletInput({ displayName, onHandleChange, onViewAnalytics }
                 <p className="text-gray-400 text-sm mb-6 font-mono">
                   {displayName
                     ? `Welcome ${displayName}! Enter a Zora handle to explore creator earnings.`
-                    : 'Enter a Zora handle to explore creator earnings.'}
+                    : "Enter a Zora handle to explore creator earnings."}
                 </p>
 
                 <div className="space-y-6">
-                  <div className={`relative bg-[#1a1e2e] overflow-hidden ${isFocused ? 'ring-1 ring-lime-700/30' : ''}`}>
+                  <div
+                    className={`relative bg-[#1a1e2e] overflow-hidden ${isFocused ? "ring-1 ring-lime-700/30" : ""}`}
+                  >
                     <div className="flex">
-                      <div className="bg-[#1a1e2e] py-4 px-4 text-gray-400 font-mono">@</div>
+                      <div className="bg-[#1a1e2e] py-4 px-4 text-gray-400 font-mono">
+                        @
+                      </div>
                       <input
                         id="zora-handle-input"
                         type="text"
@@ -125,12 +135,18 @@ export function ZoraWalletInput({ displayName, onHandleChange, onViewAnalytics }
                         onBlur={() => setIsFocused(false)}
                         placeholder="zorahandle"
                         className="w-full bg-transparent text-gray-300 py-4 pr-6 font-mono tracking-wider focus:outline-none"
-                        style={{ borderLeft: '2px solid rgba(163, 230, 53, 0.3)' }}
+                        style={{
+                          borderLeft: "2px solid rgba(163, 230, 53, 0.3)",
+                        }}
                       />
                     </div>
                   </div>
 
-                  {error && <p className="text-red-500 text-sm text-center font-mono">{error}</p>}
+                  {error && (
+                    <p className="text-red-500 text-sm text-center font-mono">
+                      {error}
+                    </p>
+                  )}
 
                   <div className="flex gap-4">
                     <button
@@ -138,9 +154,9 @@ export function ZoraWalletInput({ displayName, onHandleChange, onViewAnalytics }
                       disabled={loading || !validateHandle(handle)}
                       className="flex-1 bg-black border border-gray-700 hover:border-lime-300 text-gray-500 py-4 font-mono tracking-wider transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {loading ? 'CHECKING...' : 'GENERATE COLLAGE'}
+                      {loading ? "CHECKING..." : "GENERATE COLLAGE"}
                     </button>
-                    
+
                     {onViewAnalytics && (
                       <button
                         onClick={() => onViewAnalytics(handle)}
@@ -169,17 +185,17 @@ export function ZoraWalletInput({ displayName, onHandleChange, onViewAnalytics }
               </div>
             </div>
           </div>
-          
+
           {/* Display token collage when tokens are loaded */}
           {tokens.length > 0 && (
             <div className="mt-8 w-full">
               <h3 className="text-lg font-mono text-gray-300 mb-4 text-center">
                 {profileData?.displayName}'s Tokens
               </h3>
-              <Collage 
-                tokens={tokens} 
-                displayName={profileData?.displayName || ''}
-                selectedToken={null} 
+              <Collage
+                tokens={tokens}
+                displayName={profileData?.displayName || ""}
+                selectedToken={null}
                 setSelectedToken={() => {}}
               />
             </div>
@@ -187,5 +203,5 @@ export function ZoraWalletInput({ displayName, onHandleChange, onViewAnalytics }
         </div>
       )}
     </>
-  )
+  );
 }
