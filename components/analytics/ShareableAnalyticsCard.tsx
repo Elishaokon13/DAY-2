@@ -1,10 +1,23 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import * as htmlToImage from "html-to-image";
 import { Button } from "../ui/button";
-import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Bar,
+} from "recharts";
+import { formatCompactNumber } from "@/lib/utils";
 
 // Define new API response type
 interface AnalyticsResults {
@@ -49,14 +62,25 @@ interface AnalyticsResults {
 
 interface ShareableAnalyticsCardProps {
   handle: string;
+  profile: any; // Replace with actual profile type if available
+  totalEarnings: any;
+  totalVolume: any;
+  totalPosts: any;
+  totalHolders: any;
+  avgTotalEarnings: any;
+  sorted: any[]; // Replace with actual type if available
 }
 
 export function ShareableAnalyticsCard({
   handle,
+  profile,
+  totalEarnings,
+  totalVolume,
+  totalPosts,
+  totalHolders,
+  sorted,
+  avgTotalEarnings,
 }: ShareableAnalyticsCardProps) {
-  const [profileData, setProfileData] = useState<AnalyticsResults | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState<
     "idle" | "capturing" | "uploading" | "ready" | "sharing" | "error"
   >("idle");
@@ -64,73 +88,24 @@ export function ShareableAnalyticsCard({
   const [imgError, setImgError] = useState<boolean>(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Fetch creator profile and earnings data
-  useEffect(() => {
-    let isMounted = true;
-    async function fetchProfileData() {
-      if (!handle) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        console.log(`ShareableAnalyticsCard: Fetching profile for ${handle}`);
-        const response = await fetch(
-          `/api/creator-analytics?identifier=${encodeURIComponent(handle)}&initialLoadOnly=true`,
-        );
-
-        if (!response.ok) {
-          throw new Error(
-            `Error fetching profile data: ${response.statusText}`,
-          );
-        }
-
-        const data = await response.json();
-        console.log(`ShareableAnalyticsCard: Data received:`, data);
-
-        // Only update state if component is still mounted
-        if (isMounted) {
-          setProfileData(data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch profile data:", err);
-        if (isMounted) {
-          setError("Failed to load profile data");
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchProfileData();
-
-    // Cleanup function to prevent state updates after unmount
-    return () => {
-      isMounted = false;
-    };
-  }, [handle]);
-
-  // Format currency for display
-  const formatCurrency = (value: number) => {
-    // Check if value is a valid number
-    if (isNaN(value) || value === undefined) {
-      return "$0.00";
-    }
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
-
   // Handle image error
   const handleImageError = () => {
     console.log("Image failed to load, using fallback");
     setImgError(true);
   };
+
+  const barChartData = sorted?.map((item) => {
+    const earnings = parseFloat(
+      item?.node?.coin?.creatorEarnings?.[0]?.amountUsd || "0",
+    );
+    const date = new Date(item?.node?.coin?.createdAt)
+      .toISOString()
+      .split("T")[0]; // "YYYY-MM-DD"
+    return {
+      date,
+      earnings,
+    };
+  });
 
   // Download the card as an image
   const downloadImage = async () => {
@@ -169,7 +144,7 @@ export function ShareableAnalyticsCard({
 
   // Share to Twitter
   const shareToTwitter = async () => {
-    if (!cardRef.current || !profileData) return;
+    if (!cardRef.current || !profile) return;
 
     setShareStatus("capturing");
     setErrorMessage(null);
@@ -191,7 +166,7 @@ export function ShareableAnalyticsCard({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          displayName: profileData.profile.displayName || handle,
+          displayName: profile.displayName || handle,
           imageData: dataUrl,
         }),
       });
@@ -223,7 +198,7 @@ export function ShareableAnalyticsCard({
 
   // Share to Warpcast
   const shareToWarpcast = async () => {
-    if (!cardRef.current || !profileData) return;
+    if (!cardRef.current || !profile) return;
 
     setShareStatus("capturing");
     setErrorMessage(null);
@@ -245,7 +220,7 @@ export function ShareableAnalyticsCard({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          displayName: profileData.profile.displayName || handle,
+          displayName: profile.displayName || handle,
           imageData: dataUrl,
         }),
       });
@@ -322,54 +297,6 @@ export function ShareableAnalyticsCard({
     }
   };
 
-  if (loading) {
-    return (
-      <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700 animate-pulse mb-6">
-        <div className="h-64 bg-gray-700 rounded"></div>
-      </div>
-    );
-  }
-
-  if (error || !profileData) {
-    return (
-      <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700 mb-6">
-        <p className="text-red-500">
-          Could not generate shareable card. Please try again.
-        </p>
-      </div>
-    );
-  }
-
-  // Ensure we have valid numbers for metrics
-  const metrics = {
-    totalEarnings: Number(profileData.metrics?.totalEarnings) || 0,
-    posts: Number(profileData.metrics?.posts) || 0,
-    averageEarningsPerPost:
-      Number(profileData.metrics?.averageEarningsPerPost) || 0,
-    totalVolume: Number(profileData.metrics?.totalVolume) || 0,
-  };
-
-  // Prepare chart data for collector stats with fallback values
-  const COLORS = ["#10B981", "#6366F1"];
-
-  // Default to reasonable values if collector stats aren't available
-  const collectorsPercentage =
-    profileData.holderVsTrader?.estimatedCollectors &&
-    profileData.holderVsTrader?.totalHolders
-      ? Math.round(
-          (profileData.holderVsTrader.estimatedCollectors /
-            profileData.holderVsTrader.totalHolders) *
-            100,
-        ) || 75
-      : 75;
-
-  const tradersPercentage = 100 - collectorsPercentage;
-
-  const chartData = [
-    { name: "Collectors", value: collectorsPercentage },
-    { name: "Traders", value: tradersPercentage },
-  ];
-
   return (
     <div className="mb-6 space-y-4">
       {/* The actual card that will be captured for sharing */}
@@ -382,39 +309,23 @@ export function ShareableAnalyticsCard({
           <div className="text-lime-500 font-bold text-lg font-mono">
             ZORA ANALYTICS
           </div>
-          <div className="text-gray-400 text-sm">Creator Dashboard</div>
         </div>
 
         {/* Profile section */}
         <div className="flex items-start space-x-4 mb-6">
-          {profileData.profile.avatar && !imgError ? (
-            <div className="h-16 w-16 rounded-full overflow-hidden relative border-2 border-lime-500/30 shadow-lg shadow-lime-500/10 flex-shrink-0">
-              <Image
-                src={profileData.profile.avatar}
-                alt={profileData.profile.displayName || handle}
-                fill
-                sizes="64px"
-                className="object-cover rounded-full"
-                onError={handleImageError}
-              />
-            </div>
-          ) : (
-            <div className="h-16 w-16 rounded-full bg-lime-900/20 flex items-center justify-center border-2 border-lime-500/30 shadow-lg shadow-lime-500/10 flex-shrink-0">
-              <span className="text-lime-500 text-xl font-bold">
-                {(profileData.profile.displayName || handle)
-                  ?.charAt(0)
-                  ?.toUpperCase() || "Z"}
-              </span>
-            </div>
-          )}
+          <div className="h-16 w-16 rounded-full overflow-hidden relative border-2 border-lime-500/30 shadow-lg shadow-lime-500/10 flex-shrink-0">
+            <img
+              src={profile?.avatar?.medium || profile?.avatar?.small}
+              alt={profile?.displayName || profile?.handle || "Creator Avatar"}
+              className="object-cover !w-16 !h-16 w-full h-full"
+            />
+          </div>
 
           <div>
             <h2 className="text-xl text-white font-bold">
-              {profileData.profile.displayName || handle}
+              {profile.displayName || profile.handle || handle}
             </h2>
-            <p className="text-gray-400 text-sm">
-              @{profileData.profile.handle || handle}
-            </p>
+            <p className="text-gray-400 text-sm">@{profile.handle || handle}</p>
           </div>
         </div>
 
@@ -423,26 +334,26 @@ export function ShareableAnalyticsCard({
           <div className="bg-[#13151F] p-3 rounded-lg">
             <p className="text-gray-400 text-xs mb-1 font-mono">TOTAL EARNED</p>
             <p className="text-lime-400 text-xl font-bold">
-              {formatCurrency(metrics.totalEarnings)}
+              ${formatCompactNumber(Number(totalEarnings.toFixed(2)))}
             </p>
           </div>
 
           <div className="bg-[#13151F] p-3 rounded-lg">
             <p className="text-gray-400 text-xs mb-1 font-mono">COINS</p>
-            <p className="text-white text-xl font-bold">{metrics.posts}</p>
+            <p className="text-white text-xl font-bold">{totalPosts}</p>
           </div>
 
           <div className="bg-[#13151F] p-3 rounded-lg">
             <p className="text-gray-400 text-xs mb-1 font-mono">AVG EARNINGS</p>
             <p className="text-lime-400 text-xl font-bold">
-              {formatCurrency(metrics.averageEarningsPerPost)}
+              ${formatCompactNumber(Number(avgTotalEarnings.toFixed(2)))}
             </p>
           </div>
 
           <div className="bg-[#13151F] p-3 rounded-lg">
             <p className="text-gray-400 text-xs mb-1 font-mono">TOTAL VOLUME</p>
             <p className="text-white text-xl font-bold">
-              {formatCurrency(metrics.totalVolume)}
+              ${formatCompactNumber(Number(totalVolume.toFixed(2)))}
             </p>
           </div>
         </div>
@@ -452,52 +363,30 @@ export function ShareableAnalyticsCard({
           <p className="text-gray-400 text-xs mb-2 font-mono">
             COLLECTOR BREAKDOWN
           </p>
-          <div className="flex items-center">
-            <div className="w-24 h-24">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={15}
-                    outerRadius={35}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {chartData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="ml-4">
-              <div className="flex items-center mb-2">
-                <div className="w-3 h-3 bg-[#10B981] rounded-full mr-2"></div>
-                <p className="text-white text-sm">
-                  Collectors: {collectorsPercentage}%
-                </p>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-[#6366F1] rounded-full mr-2"></div>
-                <p className="text-white text-sm">
-                  Traders: {tradersPercentage}%
-                </p>
-              </div>
-            </div>
+          <div className="flex h-52 items-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={barChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(date) => {
+                    const d = new Date(date);
+                    return `${d.getMonth() + 1}/${d.getDate()}`;
+                  }}
+                  tick={{ fill: "#999" }}
+                />
+                <YAxis
+                  tickFormatter={(value) => `$${value}`}
+                  tick={{ fill: "#999" }}
+                />
+                <Tooltip
+                  formatter={(value) => `$${Number(value).toFixed(2)}`}
+                  labelStyle={{ color: "#fff" }}
+                />
+                <Bar dataKey="earnings" fill="#8FE388" />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="text-gray-500 text-xs text-center">
-          <p>
-            Generated via Zora Analytics Dashboard •{" "}
-            {new Date().toLocaleDateString()}
-          </p>
         </div>
       </div>
 

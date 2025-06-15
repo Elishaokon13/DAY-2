@@ -116,7 +116,16 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
           </Button>
         </div>
 
-        <ShareableAnalyticsCard handle={handle} />
+        <ShareableAnalyticsCard
+          handle={handle}
+          profile={profile}
+          totalEarnings={totalEarnings}
+          totalPosts={totalPosts}
+          avgTotalEarnings={avgTotalEarnings}
+          totalVolume={totalVolume}
+          totalHolders={totalHolders}
+          sorted={sorted}
+        />
 
         <div className="mt-6 text-gray-500 text-center text-xs">
           <p>
@@ -157,7 +166,7 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
           <div className="h-36 bg-gray-700 animate-pulse rounded"></div>
         ) : (
           <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700">
-            <div className="flex items-start gap-4">
+            <div className="flex flex-col md:flex-row items-start gap-4">
               <div className="!w-16 !h-16  rounded-full overflow-hidden relative">
                 <img
                   src={profile?.avatar?.medium || profile?.avatar?.small}
