@@ -28,7 +28,7 @@ export function EarningsSummary({ handle }: EarningsSummaryProps) {
         }
         
         const data = await response.json();
-        console.log(`EarningsSummary: Data received:`, data);
+        // console.log(`EarningsSummary: Data received:`, data);
         setMetricsData(data);
       } catch (err) {
         console.error('Failed to fetch metrics data:', err);

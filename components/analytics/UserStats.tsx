@@ -39,7 +39,7 @@ export function UserStats({ coinAddress }: UserStatsProps) {
         }
         
         const data = await response.json();
-        console.log(`UserStats: Data received:`, data);
+        // console.log(`UserStats: Data received:`, data);
         
         // Extract primitive values from the response objects
         setStatsData({

@@ -9,6 +9,7 @@ import { CreatorProfile } from './CreatorProfile';
 import { ShareableAnalyticsCard } from './ShareableAnalyticsCard';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Icon } from '@/components/Icon';
+import { getProfile, getProfileBalances, getCoin } from '@zoralabs/coins-sdk';
 
 // Define types for the new API response
 interface AnalyticsResults {
@@ -85,6 +86,31 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
+  useEffect(() => {
+    async function fetchProfileData() {
+      if (!handle) return;
+      setLoading(true);
+      setError(null);
+      try {
+        console.log(`Fetching profile data for handle: ${handle}`);
+        const profileData = await getProfile({ identifier: handle });
+        const ProfileBalance = await getProfileBalances({
+          identifier: handle,
+          count: 100,
+        });
+        console.log("Profile data fetched:", profileData?.data);
+        console.log("Profile balance fetched:", ProfileBalance);
+
+      } catch (err) {
+        console.error('Failed to fetch profile data:', err);
+        setError('Failed to load profile data. Please try again.');
+      }
+    }
+
+    fetchProfileData();
+  }, [handle]);
+
+
   // Initial data load - fast load with limited data
   useEffect(() => {
     async function fetchInitialData() {
@@ -103,7 +129,7 @@ export function AnalyticsDashboard({ handle, onBack }: AnalyticsDashboardProps) 
         }
         
         const data = await response.json();
-        console.log("Initial creator data fetched:", data);
+        // console.log("Initial creator data fetched:", data);
         setCreatorData(data);
         setInitialLoadComplete(true);
         

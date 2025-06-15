@@ -49,7 +49,7 @@ export function TimelineChart({
         }
         
         const data = await response.json();
-        console.log(`TimelineChart: Data received:`, data);
+        // console.log(`TimelineChart: Data received:`, data);
         
         if (data.timeline && Array.isArray(data.timeline)) {
           setTimelineData(data);
