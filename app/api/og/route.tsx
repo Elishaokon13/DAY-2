@@ -8,122 +8,67 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const creator = searchParams.get('creator');
 
-    if (!creator) {
-      return new Response('Missing creator parameter', { status: 400 });
-    }
-
     return new ImageResponse(
       (
         <div
           style={{
-            height: '100%',
+            background: 'linear-gradient(to bottom right, #1a1e2e, #0f1121)',
             width: '100%',
+            height: '100%',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#1a1e2e',
-            padding: '40px 60px',
+            padding: '40px',
           }}
         >
-          {/* Logo and Title */}
           <div
             style={{
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: '20px',
+              textAlign: 'center',
             }}
           >
             <div
               style={{
                 fontSize: 60,
                 fontWeight: 'bold',
-                background: 'linear-gradient(to right, #84cc16, #10b981)',
-                backgroundClip: 'text',
-                color: 'transparent',
-                marginBottom: '10px',
+                color: '#84cc16',
+                marginBottom: '20px',
               }}
             >
-              ZORA ANALYTICS
-            </div>
-          </div>
-
-          {/* Creator Info */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              marginBottom: '40px',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 40,
-                color: '#ffffff',
-                marginBottom: '10px',
-              }}
-            >
-              {creator}'s Creator Dashboard
+              {creator ? `${creator}'s Analytics` : 'Zora Analytics'}
             </div>
             <div
               style={{
-                fontSize: 24,
+                fontSize: 32,
                 color: '#9ca3af',
+                marginBottom: '40px',
               }}
             >
-              View detailed analytics and insights
+              Creator Analytics Dashboard
             </div>
-          </div>
-
-          {/* Stats Preview */}
-          <div
-            style={{
-              display: 'flex',
-              gap: '20px',
-              marginBottom: '40px',
-            }}
-          >
-            {['Earnings', 'Volume', 'Holders'].map((stat) => (
+            <div
+              style={{
+                display: 'flex',
+                gap: '20px',
+                marginTop: '20px',
+              }}
+            >
               <div
-                key={stat}
                 style={{
-                  padding: '20px 40px',
-                  background: 'rgba(0, 0, 0, 0.3)',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(107, 114, 128, 0.3)',
+                  background: 'rgba(132, 204, 22, 0.1)',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(132, 204, 22, 0.2)',
+                  color: '#84cc16',
                 }}
               >
-                <div
-                  style={{
-                    fontSize: 20,
-                    color: '#9ca3af',
-                    marginBottom: '8px',
-                  }}
-                >
-                  {stat.toUpperCase()}
-                </div>
-                <div
-                  style={{
-                    fontSize: 24,
-                    color: '#84cc16',
-                  }}
-                >
-                  •••
-                </div>
+                View Analytics
               </div>
-            ))}
-          </div>
-
-          {/* Footer */}
-          <div
-            style={{
-              fontSize: 24,
-              color: '#6b7280',
-            }}
-          >
-            Generated with Zora Analytics
+            </div>
           </div>
         </div>
       ),
@@ -133,8 +78,7 @@ export async function GET(req: NextRequest) {
       },
     );
   } catch (e) {
-    console.log(`${e.message}`);
-    return new Response(`Failed to generate the image`, {
+    return new Response(`Failed to generate image`, {
       status: 500,
     });
   }
