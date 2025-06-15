@@ -20,16 +20,15 @@ import {
 // } from "@coinbase/onchainkit/wallet";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { ZoraWalletInput } from "@/components/ZoraWalletInput";
-import { Icon } from "@/components/Icon";
+import { ZoraWalletInput } from "@/components/ui/ZoraWalletInput";
+import { Icon } from "@/components/ui/Icon";
 import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
 
 export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
   const [frameAdded, setFrameAdded] = useState(false);
-  const [viewMode, setViewMode] = useState<'tokens' | 'analytics'>('tokens');
-  const [zoraHandle, setZoraHandle] = useState<string>('');
-  
+  const [viewMode, setViewMode] = useState<"tokens" | "analytics">("tokens");
+  const [zoraHandle, setZoraHandle] = useState<string>("");
 
   const addFrame = useAddFrame();
   const openUrl = useOpenUrl();
@@ -48,12 +47,12 @@ export default function App() {
   // Handler for switching to analytics view
   const handleViewAnalytics = useCallback((handle: string) => {
     setZoraHandle(handle);
-    setViewMode('analytics');
+    setViewMode("analytics");
   }, []);
 
   // Handler for going back to tokens view
   const handleBackToTokens = useCallback(() => {
-    setViewMode('tokens');
+    setViewMode("tokens");
   }, []);
 
   const saveFrameButton = useMemo(() => {
@@ -89,15 +88,18 @@ export default function App() {
         <header className="flex justify-between items-center mb-3 h-11">
           <div>
             <div className="flex items-center space-x-2">
-           
-              {viewMode === 'analytics' && (
+              {viewMode === "analytics" && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="text-[var(--app-accent)] bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400"
                   onClick={handleBackToTokens}
                 >
-                  <Icon name="arrowLeft" size="sm" className="mr-1 text-lime-400" />
+                  <Icon
+                    name="arrowLeft"
+                    size="sm"
+                    className="mr-1 text-lime-400"
+                  />
                   Back to Search
                 </Button>
               )}
@@ -107,16 +109,16 @@ export default function App() {
         </header>
 
         <main className="flex-1">
-          {viewMode === 'tokens' ? (
-            <ZoraWalletInput 
-              displayName={context?.user?.displayName || ''} 
+          {viewMode === "tokens" ? (
+            <ZoraWalletInput
+              displayName={context?.user?.displayName || ""}
               onHandleChange={(handle) => setZoraHandle(handle)}
               onViewAnalytics={handleViewAnalytics}
             />
           ) : (
-            <AnalyticsDashboard 
-              handle={zoraHandle} 
-              onBack={handleBackToTokens} 
+            <AnalyticsDashboard
+              handle={zoraHandle}
+              onBack={handleBackToTokens}
             />
           )}
         </main>

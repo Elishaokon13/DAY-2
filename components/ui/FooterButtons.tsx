@@ -2,6 +2,7 @@
 import React from "react";
 import { ShareButton } from "./ShareButton";
 
+
 interface FooterButtonsProps {
   onReset: () => void;
   displayName: string;

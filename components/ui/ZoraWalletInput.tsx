@@ -4,9 +4,8 @@ import { useState, useEffect } from "react";
 import { Collage } from "@/components/Collage/Collage";
 import { validateHandle } from "@/lib/validateWallet";
 import { ZoraTokenResponse, ZoraToken } from "@/app/api/zora-tokens/route";
-import { FooterButtons } from "@/components/FooterButtons";
-import { Button } from "./ui/button";
 import { Icon } from "./Icon";
+import { FooterButtons } from "./FooterButtons";
 
 export interface ZoraWalletInputProps {
   displayName: string;
