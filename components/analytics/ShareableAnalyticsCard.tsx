@@ -16,9 +16,10 @@ import {
   YAxis,
   Tooltip,
   Bar,
+  AreaChart,
+  Area,
 } from "recharts";
 import { formatCompactNumber } from "@/lib/utils";
-
 
 interface ShareableAnalyticsCardProps {
   handle: string;
@@ -47,38 +48,36 @@ export function ShareableAnalyticsCard({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
-const captureImage = async (): Promise<string | null> => {
-  if (!cardRef.current) {
-    setErrorMessage("Card element not found");
-    return null;
-  }
+  const captureImage = async (): Promise<string | null> => {
+    if (!cardRef.current) {
+      setErrorMessage("Card element not found");
+      return null;
+    }
 
-  try {
-    // Add a small delay to ensure DOM is ready
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    try {
+      // Add a small delay to ensure DOM is ready
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-    const dataUrl = await htmlToImage.toPng(cardRef.current, {
-      quality: 1.0,
-      pixelRatio: 2,
-      cacheBust: true,
-      backgroundColor: "#0f1121",
-      width: cardRef.current.offsetWidth,
-      height: cardRef.current.offsetHeight,
-      // Add these options for better compatibility
-      skipAutoScale: true,
-      // useCORS: true,
-      // allowTaint: true,
-    });
+      const dataUrl = await htmlToImage.toPng(cardRef.current, {
+        quality: 1.0,
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: "#0f1121",
+        width: cardRef.current.offsetWidth,
+        height: cardRef.current.offsetHeight,
+        // Add these options for better compatibility
+        skipAutoScale: true,
+        // useCORS: true,
+        // allowTaint: true,
+      });
 
-    return dataUrl;
-  } catch (error) {
-    console.error("Image capture failed:", error);
-    setErrorMessage(
-      `Failed to capture image: ${"Unknown error"}`,
-    );
-    return null;
-  }
-};
+      return dataUrl;
+    } catch (error) {
+      console.error("Image capture failed:", error);
+      setErrorMessage(`Failed to capture image: ${"Unknown error"}`);
+      return null;
+    }
+  };
 
   const barChartData = sorted?.map((item) => {
     const earnings = parseFloat(
@@ -93,124 +92,124 @@ const captureImage = async (): Promise<string | null> => {
     };
   });
 
-const downloadImage = async () => {
-  setShareStatus("capturing");
-  setErrorMessage(null);
+  const downloadImage = async () => {
+    setShareStatus("capturing");
+    setErrorMessage(null);
 
-  try {
-    const dataUrl = await captureImage();
-    if (!dataUrl) {
+    try {
+      const dataUrl = await captureImage();
+      if (!dataUrl) {
+        setShareStatus("error");
+        setErrorMessage("Failed to capture image for download");
+        return;
+      }
+
+      // Convert data URL to blob for better browser compatibility
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+
+      // Create object URL from blob
+      const blobUrl = URL.createObjectURL(blob);
+
+      // Create and trigger download
+      const link = document.createElement("a");
+      link.download = `${handle}-zora-analytics.png`;
+      link.href = blobUrl;
+
+      // Append to body, click, then remove (for better browser compatibility)
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the object URL
+      URL.revokeObjectURL(blobUrl);
+
+      setShareStatus("idle");
+    } catch (error) {
+      console.error("Download failed:", error);
+      setErrorMessage("Download failed. Please try again.");
       setShareStatus("error");
-      setErrorMessage("Failed to capture image for download");
-      return;
     }
-
-    // Convert data URL to blob for better browser compatibility
-    const response = await fetch(dataUrl);
-    const blob = await response.blob();
-
-    // Create object URL from blob
-    const blobUrl = URL.createObjectURL(blob);
-
-    // Create and trigger download
-    const link = document.createElement("a");
-    link.download = `${handle}-zora-analytics.png`;
-    link.href = blobUrl;
-
-    // Append to body, click, then remove (for better browser compatibility)
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    // Clean up the object URL
-    URL.revokeObjectURL(blobUrl);
-
-    setShareStatus("idle");
-  } catch (error) {
-    console.error("Download failed:", error);
-    setErrorMessage("Download failed. Please try again.");
-    setShareStatus("error");
-  }
-};
+  };
   // Share to Twitter
-const shareToTwitter = async () => {
-  setShareStatus("capturing");
-  setErrorMessage(null);
+  const shareToTwitter = async () => {
+    setShareStatus("capturing");
+    setErrorMessage(null);
 
-  const dataUrl = await captureImage();
-  if (!dataUrl) return setShareStatus("error");
+    const dataUrl = await captureImage();
+    if (!dataUrl) return setShareStatus("error");
 
-  setShareStatus("uploading");
+    setShareStatus("uploading");
 
-  try {
-    const res = await fetch("/api/save-image", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        displayName: profile.displayName || handle,
-        imageData: dataUrl,
-      }),
-    });
-
-    const { blobUrl } = await res.json();
-
-    const text = `Check out my creator analytics on Zora!`;
-    const frameUrl = `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`;
-    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-      text,
-    )}&url=${encodeURIComponent(frameUrl)}`;
-
-    window.open(twitterUrl, "_blank");
-    setShareStatus("idle");
-  } catch (err) {
-    console.error("Twitter share error:", err);
-    setErrorMessage("Twitter share failed.");
-    setShareStatus("error");
-  }
-};
-  // Share to Warpcast
-const shareToFarcaster = async () => {
-  setShareStatus("capturing");
-  setErrorMessage(null);
-
-  const dataUrl = await captureImage();
-  if (!dataUrl) return setShareStatus("error");
-
-  setShareStatus("uploading");
-
-  try {
-    const res = await fetch("/api/save-image", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        displayName: profile.displayName || handle,
-        imageData: dataUrl,
-      }),
-    });
-
-    const { blobUrl } = await res.json();
-    const castUrl = `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`;
-    const farcaster = (window as any).farcaster?.sdk;
-
-    if (farcaster?.actions?.composeCast) {
-      await farcaster.actions.composeCast({
-        text: "Check out my creator analytics on Zora!",
-        embeds: [castUrl],
+    try {
+      const res = await fetch("/api/save-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: profile.displayName || handle,
+          imageData: dataUrl,
+        }),
       });
-    } else {
-      const fallbackUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(
-        "Check out my creator analytics on Zora!",
-      )}&url=${encodeURIComponent(castUrl)}`;
-      window.open(fallbackUrl, "_blank");
-    }
 
-    setShareStatus("idle");
-  } catch (err) {
-    console.error("Farcaster share error:", err);
-    setErrorMessage("Farcaster share failed.");
-    setShareStatus("error");
-  }
-};
+      const { blobUrl } = await res.json();
+
+      const text = `Check out my creator analytics on Zora!`;
+      const frameUrl = `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`;
+      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+        text,
+      )}&url=${encodeURIComponent(frameUrl)}`;
+
+      window.open(twitterUrl, "_blank");
+      setShareStatus("idle");
+    } catch (err) {
+      console.error("Twitter share error:", err);
+      setErrorMessage("Twitter share failed.");
+      setShareStatus("error");
+    }
+  };
+  // Share to Warpcast
+  const shareToFarcaster = async () => {
+    setShareStatus("capturing");
+    setErrorMessage(null);
+
+    const dataUrl = await captureImage();
+    if (!dataUrl) return setShareStatus("error");
+
+    setShareStatus("uploading");
+
+    try {
+      const res = await fetch("/api/save-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: profile.displayName || handle,
+          imageData: dataUrl,
+        }),
+      });
+
+      const { blobUrl } = await res.json();
+      const castUrl = `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`;
+      const farcaster = (window as any).farcaster?.sdk;
+
+      if (farcaster?.actions?.composeCast) {
+        await farcaster.actions.composeCast({
+          text: "Check out my creator analytics on Zora!",
+          embeds: [castUrl],
+        });
+      } else {
+        const fallbackUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(
+          "Check out my creator analytics on Zora!",
+        )}&url=${encodeURIComponent(castUrl)}`;
+        window.open(fallbackUrl, "_blank");
+      }
+
+      setShareStatus("idle");
+    } catch (err) {
+      console.error("Farcaster share error:", err);
+      setErrorMessage("Farcaster share failed.");
+      setShareStatus("error");
+    }
+  };
 
   // Button text based on status
   const getButtonText = (type: "download" | "twitter" | "farcaster") => {
@@ -299,14 +298,33 @@ const shareToFarcaster = async () => {
         </div>
 
         {/* Pie chart section */}
-        <div className="bg-[#13151F] p-4 rounded-lg mb-4">
-          <p className="text-gray-400 text-xs mb-2 font-mono">
-            COLLECTOR BREAKDOWN
-          </p>
+        <div className="bg-[#13151F] p-4 space-y-3 rounded-lg mb-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-5 w-full">
+            <p className="text-gray-400 text-xs mb-2 font-mono">
+              COLLECTOR BREAKDOWN
+            </p>
+            <p className="text-white">Unique: {totalHolders}</p>
+          </div>
           <div className="flex h-52 items-center">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+              <AreaChart data={barChartData}>
+                <defs>
+                  <linearGradient
+                    id="colorEarnings"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="5%" stopColor="#8FE388" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#8FE388" stopOpacity={0.1} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#333"
+                  opacity={0.3}
+                />
                 <XAxis
                   dataKey="date"
                   tickFormatter={(date) => {
@@ -314,17 +332,31 @@ const shareToFarcaster = async () => {
                     return `${d.getMonth() + 1}/${d.getDate()}`;
                   }}
                   tick={{ fill: "#999" }}
+                  stroke="#666"
                 />
                 <YAxis
                   tickFormatter={(value) => `$${value}`}
                   tick={{ fill: "#999" }}
+                  stroke="#666"
                 />
                 <Tooltip
                   formatter={(value) => `$${Number(value).toFixed(2)}`}
                   labelStyle={{ color: "#fff" }}
+                  contentStyle={{
+                    backgroundColor: "rgba(17, 17, 17, 0.9)",
+                    border: "1px solid rgba(107, 114, 128, 0.3)",
+                    borderRadius: "8px",
+                  }}
                 />
-                <Bar dataKey="earnings" fill="#8FE388" />
-              </BarChart>
+                <Area
+                  type="monotone"
+                  dataKey="earnings"
+                  stroke="#8FE388"
+                  strokeWidth={2}
+                  fill="url(#colorEarnings)"
+                  name="Earnings"
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
