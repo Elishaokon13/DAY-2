@@ -109,7 +109,7 @@ export function ZoraWalletInput({
           />
           <FooterButtons
             onReset={handleReset}
-            displayName={profileData.displayName || ""}
+            displayName={profileData.profileHandle || ""}
           />
         </motion.div>
       ) : (
