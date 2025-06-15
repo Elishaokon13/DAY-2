@@ -1,16 +1,16 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 export async function loadGoogleFont(font: string, text: string) {
   const url = `https://fonts.googleapis.com/css2?family=${font}&text=${encodeURIComponent(
-    text
+    text,
   )}`;
   const css = await (await fetch(url)).text();
   const resource = css.match(
-    /src: url\((.+)\) format\('(opentype|truetype)'\)/
+    /src: url\((.+)\) format\('(opentype|truetype)'\)/,
   );
 
   if (resource) {
@@ -31,4 +31,23 @@ export async function loadImage(url: string): Promise<ArrayBuffer> {
   }
 
   return await logoImageRes.arrayBuffer();
+}
+
+export function formatNumberWithCommas(amount: number | string): string {
+  const num = typeof amount === "string" ? parseFloat(amount) : amount;
+  return num.toLocaleString("en-US");
+}
+
+export function formatCompactNumber(value: number | string): string {
+  const num = typeof value === "string" ? parseFloat(value) : value;
+
+  if (isNaN(num)) return "0";
+
+  if (num >= 1_000_000_000)
+    return (num / 1_000_000_000).toFixed(1).replace(/\.0$/, "") + "B";
+  if (num >= 1_000_000)
+    return (num / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (num >= 1_000) return (num / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+
+  return num.toString();
 }
