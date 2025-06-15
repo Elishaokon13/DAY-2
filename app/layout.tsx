@@ -3,7 +3,7 @@ import '@coinbase/onchainkit/styles.css';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Providers } from './providers';
-import { CyberpunkBackground } from '@/components/CyberBackground';
+import { CyberpunkBackground } from '@/components/ui/CyberBackground';
 
 
 export const viewport: Viewport = {

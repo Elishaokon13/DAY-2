@@ -1,37 +1,14 @@
 "use client";
 
-import {
-  useMiniKit,
-  useAddFrame,
-  useOpenUrl,
-} from "@coinbase/onchainkit/minikit";
-// import {
-//   Name,
-//   Identity,
-//   Address,
-//   Avatar,
-//   EthBalance,
-// } from "@coinbase/onchainkit/identity";
-// import {
-//   ConnectWallet,
-//   Wallet,
-//   WalletDropdown,
-//   WalletDropdownDisconnect,
-// } from "@coinbase/onchainkit/wallet";
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useMiniKit, useOpenUrl } from "@coinbase/onchainkit/minikit";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ZoraWalletInput } from "@/components/ZoraWalletInput";
-import { Icon } from "@/components/Icon";
-import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
+import { ZoraWalletInput } from "@/components/ui/ZoraWalletInput";
 
 export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
-  const [frameAdded, setFrameAdded] = useState(false);
-  const [viewMode, setViewMode] = useState<'tokens' | 'analytics'>('tokens');
-  const [zoraHandle, setZoraHandle] = useState<string>('');
-  
+  const [zoraHandle, setZoraHandle] = useState<string>("");
 
-  const addFrame = useAddFrame();
   const openUrl = useOpenUrl();
 
   useEffect(() => {
@@ -40,101 +17,17 @@ export default function App() {
     }
   }, [setFrameReady, isFrameReady]);
 
-  const handleAddFrame = useCallback(async () => {
-    const frameAdded = await addFrame();
-    setFrameAdded(Boolean(frameAdded));
-  }, [addFrame]);
-
-  // Handler for switching to analytics view
-  const handleViewAnalytics = useCallback((handle: string) => {
-    setZoraHandle(handle);
-    setViewMode('analytics');
-  }, []);
-
-  // Handler for going back to tokens view
-  const handleBackToTokens = useCallback(() => {
-    setViewMode('tokens');
-  }, []);
-
-  const saveFrameButton = useMemo(() => {
-    if (context && !context.client.added) {
-      return (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleAddFrame}
-          className="text-[var(--app-accent)] p-4"
-        >
-          <Icon name="plus" size="sm" />
-          Save Frame
-        </Button>
-      );
-    }
-
-    if (frameAdded) {
-      return (
-        <div className="flex items-center space-x-1 text-sm font-medium text-[#0052FF] animate-fade-out">
-          <Icon name="check" size="sm" className="text-[#0052FF]" />
-          <span>Saved</span>
-        </div>
-      );
-    }
-
-    return null;
-  }, [context, frameAdded, handleAddFrame]);
-
   return (
     <div className="flex flex-col min-h-screen font-sans text-[var(--app-foreground)] mini-app-theme from-[var(--app-background)] to-[var(--app-gray)]">
-      <div className="w-full max-w-4xl mx-auto px-4 py-3">
-        <header className="flex justify-between items-center mb-3 h-11">
-          <div>
-            <div className="flex items-center space-x-2">
-              {/* <Wallet className="z-10">
-                <ConnectWallet>
-                  <Name className="text-inherit" />
-                </ConnectWallet>
-                <WalletDropdown>
-                  <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
-                    <Avatar />
-                    <Name />
-                    <Address />
-                    <EthBalance />
-                  </Identity>
-                  <WalletDropdownDisconnect />
-                </WalletDropdown>
-              </Wallet> */}
-              {viewMode === 'analytics' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-[var(--app-accent)] bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400"
-                  onClick={handleBackToTokens}
-                >
-                  <Icon name="arrowLeft" size="sm" className="mr-1 text-lime-400" />
-                  Back to Search
-                </Button>
-              )}
-            </div>
-          </div>
-          <div>{saveFrameButton}</div>
-        </header>
-
-        <main className="flex-1">
-          {viewMode === 'tokens' ? (
-            <ZoraWalletInput 
-              displayName={context?.user?.displayName || ''} 
-              onHandleChange={(handle) => setZoraHandle(handle)}
-              onViewAnalytics={handleViewAnalytics}
-            />
-          ) : (
-            <AnalyticsDashboard 
-              handle={zoraHandle} 
-              onBack={handleBackToTokens} 
-            />
-          )}
+      <div className="w-full">
+        <main className="w-full h-screen flex items-center justify-center">
+          <ZoraWalletInput
+            displayName={context?.user?.displayName || ""}
+            onHandleChange={(handle) => setZoraHandle(handle)}
+          />
         </main>
 
-        <footer className="mt-2 pt-4 flex justify-center">
+        {/* <footer className="flex justify-center">
           <Button
             variant="ghost"
             size="sm"
@@ -143,7 +36,7 @@ export default function App() {
           >
             Built on Base with MiniKit
           </Button>
-        </footer>
+        </footer> */}
       </div>
     </div>
   );
