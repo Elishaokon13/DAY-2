@@ -233,12 +233,12 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
         )}
       </div>
 
-      <div className="mt-8 text-gray-500 text-center text-xs">
+      {/* <div className="mt-8 text-gray-500 text-center text-xs">
         <p>
           Data displayed is based on estimates and may not reflect actual
           earnings.
         </p>
-      </div>
+      </div> */}
     </div>
   );
 }
