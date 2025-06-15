@@ -88,7 +88,16 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
           </motion.div>
         </div>
 
-        <ShareableAnalyticsCard handle={handle} />
+        <ShareableAnalyticsCard
+          handle={handle}
+          profile={profile}
+          totalEarnings={totalEarnings}
+          totalPosts={totalPosts}
+          avgTotalEarnings={avgTotalEarnings}
+          totalVolume={totalVolume}
+          totalHolders={totalHolders}
+          sorted={sorted}
+        />
 
         <div className="mt-6 text-gray-500 text-center text-xs">
           <p>Share your creator analytics with your audience or download for your records.</p>

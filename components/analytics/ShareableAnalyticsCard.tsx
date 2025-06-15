@@ -1,304 +1,219 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import * as htmlToImage from "html-to-image";
 import { Button } from "../ui/button";
-import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Bar,
+} from "recharts";
+import { formatCompactNumber } from "@/lib/utils";
 
-// Define new API response type
-interface AnalyticsResults {
-  profile: {
-    handle: string;
-    displayName?: string;
-    bio?: string;
-    avatar?: string;
-    publicWallet?: string;
-  };
-  metrics: {
-    totalEarnings: number;
-    totalVolume: number;
-    posts: number;
-    averageEarningsPerPost: number;
-  };
-  coins: {
-    created: {
-      count: number;
-      items: Array<{
-        name: string;
-        symbol: string;
-        address: string;
-        balance: number;
-        uniqueHolders: number;
-        totalVolume: number;
-        estimatedEarnings: number;
-      }>;
-    };
-    collected: {
-      count: number;
-      items: Array<any>;
-    };
-  };
-  holderVsTrader: {
-    totalHolders: number;
-    estimatedCollectors: number;
-    estimatedTraders: number;
-    coinBreakdown: any[];
-  };
-}
 
 interface ShareableAnalyticsCardProps {
   handle: string;
+  profile: any; // Replace with actual profile type if available
+  totalEarnings: any;
+  totalVolume: any;
+  totalPosts: any;
+  totalHolders: any;
+  avgTotalEarnings: any;
+  sorted: any[]; // Replace with actual type if available
 }
 
 export function ShareableAnalyticsCard({
   handle,
+  profile,
+  totalEarnings,
+  totalVolume,
+  totalPosts,
+  totalHolders,
+  sorted,
+  avgTotalEarnings,
 }: ShareableAnalyticsCardProps) {
-  const [profileData, setProfileData] = useState<AnalyticsResults | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState<
     "idle" | "capturing" | "uploading" | "ready" | "sharing" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [imgError, setImgError] = useState<boolean>(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Fetch creator profile and earnings data
-  useEffect(() => {
-    let isMounted = true;
-    async function fetchProfileData() {
-      if (!handle) return;
+const captureImage = async (): Promise<string | null> => {
+  if (!cardRef.current) {
+    setErrorMessage("Card element not found");
+    return null;
+  }
 
-      setLoading(true);
-      setError(null);
+  try {
+    // Add a small delay to ensure DOM is ready
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
-      try {
-        console.log(`ShareableAnalyticsCard: Fetching profile for ${handle}`);
-        const response = await fetch(
-          `/api/creator-analytics?identifier=${encodeURIComponent(handle)}&initialLoadOnly=true`,
-        );
+    const dataUrl = await htmlToImage.toPng(cardRef.current, {
+      quality: 1.0,
+      pixelRatio: 2,
+      cacheBust: true,
+      backgroundColor: "#0f1121",
+      width: cardRef.current.offsetWidth,
+      height: cardRef.current.offsetHeight,
+      // Add these options for better compatibility
+      skipAutoScale: true,
+      // useCORS: true,
+      // allowTaint: true,
+    });
 
-        if (!response.ok) {
-          throw new Error(
-            `Error fetching profile data: ${response.statusText}`,
-          );
-        }
+    return dataUrl;
+  } catch (error) {
+    console.error("Image capture failed:", error);
+    setErrorMessage(
+      `Failed to capture image: ${"Unknown error"}`,
+    );
+    return null;
+  }
+};
 
-        const data = await response.json();
-        console.log(`ShareableAnalyticsCard: Data received:`, data);
-
-        // Only update state if component is still mounted
-        if (isMounted) {
-          setProfileData(data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch profile data:", err);
-        if (isMounted) {
-          setError("Failed to load profile data");
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchProfileData();
-
-    // Cleanup function to prevent state updates after unmount
-    return () => {
-      isMounted = false;
+  const barChartData = sorted?.map((item) => {
+    const earnings = parseFloat(
+      item?.node?.coin?.creatorEarnings?.[0]?.amountUsd || "0",
+    );
+    const date = new Date(item?.node?.coin?.createdAt)
+      .toISOString()
+      .split("T")[0]; // "YYYY-MM-DD"
+    return {
+      date,
+      earnings,
     };
-  }, [handle]);
+  });
 
-  // Format currency for display
-  const formatCurrency = (value: number) => {
-    // Check if value is a valid number
-    if (isNaN(value) || value === undefined) {
-      return "$0.00";
-    }
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
+const downloadImage = async () => {
+  setShareStatus("capturing");
+  setErrorMessage(null);
 
-  // Handle image error
-  const handleImageError = () => {
-    console.log("Image failed to load, using fallback");
-    setImgError(true);
-  };
-
-  // Download the card as an image
-  const downloadImage = async () => {
-    if (!cardRef.current) return;
-
-    setShareStatus("capturing");
-    setErrorMessage(null);
-
-    try {
-      const dataUrl = await htmlToImage.toPng(cardRef.current, {
-        quality: 1.0,
-        pixelRatio: 2,
-        cacheBust: true,
-        backgroundColor: "#0f1121",
-        style: {
-          borderRadius: "8px",
-          overflow: "hidden",
-        },
-      });
-
-      // Create download link
-      const link = document.createElement("a");
-      link.download = `${handle}-zora-analytics.png`;
-      link.href = dataUrl;
-      link.click();
-
-      setShareStatus("idle");
-    } catch (error) {
-      console.error("❌ Failed to capture image:", error);
+  try {
+    const dataUrl = await captureImage();
+    if (!dataUrl) {
       setShareStatus("error");
-      setErrorMessage(
-        error instanceof Error ? error.message : "Unknown error occurred",
-      );
+      setErrorMessage("Failed to capture image for download");
+      return;
     }
-  };
 
+    // Convert data URL to blob for better browser compatibility
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+
+    // Create object URL from blob
+    const blobUrl = URL.createObjectURL(blob);
+
+    // Create and trigger download
+    const link = document.createElement("a");
+    link.download = `${handle}-zora-analytics.png`;
+    link.href = blobUrl;
+
+    // Append to body, click, then remove (for better browser compatibility)
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Clean up the object URL
+    URL.revokeObjectURL(blobUrl);
+
+    setShareStatus("idle");
+  } catch (error) {
+    console.error("Download failed:", error);
+    setErrorMessage("Download failed. Please try again.");
+    setShareStatus("error");
+  }
+};
   // Share to Twitter
-  const shareToTwitter = async () => {
-    if (!cardRef.current || !profileData) return;
+const shareToTwitter = async () => {
+  setShareStatus("capturing");
+  setErrorMessage(null);
 
-    setShareStatus("capturing");
-    setErrorMessage(null);
+  const dataUrl = await captureImage();
+  if (!dataUrl) return setShareStatus("error");
 
-    try {
-      const dataUrl = await htmlToImage.toPng(cardRef.current, {
-        quality: 1.0,
-        pixelRatio: 2,
-        cacheBust: true,
-        backgroundColor: "#0f1121",
-      });
+  setShareStatus("uploading");
 
-      // Upload to server
-      setShareStatus("uploading");
+  try {
+    const res = await fetch("/api/save-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        displayName: profile.displayName || handle,
+        imageData: dataUrl,
+      }),
+    });
 
-      const saveRes = await fetch("/api/save-image", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          displayName: profileData.profile.displayName || handle,
-          imageData: dataUrl,
-        }),
-      });
+    const { blobUrl } = await res.json();
 
-      if (!saveRes.ok) {
-        const errorText = await saveRes.text();
-        throw new Error(`Image save failed: ${saveRes.status} - ${errorText}`);
-      }
+    const text = `Check out my creator analytics on Zora!`;
+    const frameUrl = `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+      text,
+    )}&url=${encodeURIComponent(frameUrl)}`;
 
-      const { blobUrl } = await saveRes.json();
-
-      // Open Twitter share dialog
-      const text = `Check out my creator analytics on Zora! Not financial advice. Just vibes.`;
-      const url = encodeURIComponent(
-        `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`,
-      );
-      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`;
-
-      window.open(twitterUrl, "_blank");
-      setShareStatus("idle");
-    } catch (error) {
-      console.error("❌ Failed to share to Twitter:", error);
-      setShareStatus("error");
-      setErrorMessage(
-        error instanceof Error ? error.message : "Unknown error occurred",
-      );
-    }
-  };
-
+    window.open(twitterUrl, "_blank");
+    setShareStatus("idle");
+  } catch (err) {
+    console.error("Twitter share error:", err);
+    setErrorMessage("Twitter share failed.");
+    setShareStatus("error");
+  }
+};
   // Share to Warpcast
-  const shareToWarpcast = async () => {
-    if (!cardRef.current || !profileData) return;
+const shareToFarcaster = async () => {
+  setShareStatus("capturing");
+  setErrorMessage(null);
 
-    setShareStatus("capturing");
-    setErrorMessage(null);
+  const dataUrl = await captureImage();
+  if (!dataUrl) return setShareStatus("error");
 
-    try {
-      const dataUrl = await htmlToImage.toPng(cardRef.current, {
-        quality: 1.0,
-        pixelRatio: 2,
-        cacheBust: true,
-        backgroundColor: "#0f1121",
+  setShareStatus("uploading");
+
+  try {
+    const res = await fetch("/api/save-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        displayName: profile.displayName || handle,
+        imageData: dataUrl,
+      }),
+    });
+
+    const { blobUrl } = await res.json();
+    const castUrl = `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`;
+    const farcaster = (window as any).farcaster?.sdk;
+
+    if (farcaster?.actions?.composeCast) {
+      await farcaster.actions.composeCast({
+        text: "Check out my creator analytics on Zora!",
+        embeds: [castUrl],
       });
-
-      // Upload to server
-      setShareStatus("uploading");
-
-      const saveRes = await fetch("/api/save-image", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          displayName: profileData.profile.displayName || handle,
-          imageData: dataUrl,
-        }),
-      });
-
-      if (!saveRes.ok) {
-        const errorText = await saveRes.text();
-        throw new Error(`Image save failed: ${saveRes.status} - ${errorText}`);
-      }
-
-      const { blobUrl } = await saveRes.json();
-
-      // Try to use Farcaster SDK if available
-      try {
-        const sdk = (window as any).farcaster?.sdk;
-        if (sdk && sdk.actions && sdk.actions.composeCast) {
-          await sdk.actions.composeCast({
-            text: "Check out my creator analytics on Zora! Not financial advice. Just vibes.",
-            embeds: [
-              `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`,
-            ],
-          });
-        } else {
-          // Fallback to Warpcast website
-          const text = `Check out my creator analytics on Zora! Not financial advice. Just vibes.`;
-          const url = encodeURIComponent(
-            `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`,
-          );
-          const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&url=${url}`;
-          window.open(warpcastUrl, "_blank");
-        }
-      } catch (error) {
-        console.error("Error using Farcaster SDK:", error);
-        // Fallback to Warpcast website
-        const text = `Check out my creator analytics on Zora! Not financial advice. Just vibes.`;
-        const url = encodeURIComponent(
-          `${process.env.NEXT_PUBLIC_URL || window.location.origin}/frame/${handle}`,
-        );
-        const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&url=${url}`;
-        window.open(warpcastUrl, "_blank");
-      }
-
-      setShareStatus("idle");
-    } catch (error) {
-      console.error("❌ Failed to share to Warpcast:", error);
-      setShareStatus("error");
-      setErrorMessage(
-        error instanceof Error ? error.message : "Unknown error occurred",
-      );
+    } else {
+      const fallbackUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(
+        "Check out my creator analytics on Zora!",
+      )}&url=${encodeURIComponent(castUrl)}`;
+      window.open(fallbackUrl, "_blank");
     }
-  };
+
+    setShareStatus("idle");
+  } catch (err) {
+    console.error("Farcaster share error:", err);
+    setErrorMessage("Farcaster share failed.");
+    setShareStatus("error");
+  }
+};
 
   // Button text based on status
-  const getButtonText = (type: "download" | "twitter" | "warpcast") => {
+  const getButtonText = (type: "download" | "twitter" | "farcaster") => {
     if (shareStatus !== "idle" && shareStatus !== "error") {
       switch (shareStatus) {
         case "capturing":
@@ -317,58 +232,10 @@ export function ShareableAnalyticsCard({
         return "Download Image";
       case "twitter":
         return "Share to Twitter";
-      case "warpcast":
+      case "farcaster":
         return "Share to Warpcast";
     }
   };
-
-  if (loading) {
-    return (
-      <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700 animate-pulse mb-6">
-        <div className="h-64 bg-gray-700 rounded"></div>
-      </div>
-    );
-  }
-
-  if (error || !profileData) {
-    return (
-      <div className="bg-[#1a1e2e] p-6 rounded-lg border border-gray-700 mb-6">
-        <p className="text-red-500">
-          Could not generate shareable card. Please try again.
-        </p>
-      </div>
-    );
-  }
-
-  // Ensure we have valid numbers for metrics
-  const metrics = {
-    totalEarnings: Number(profileData.metrics?.totalEarnings) || 0,
-    posts: Number(profileData.metrics?.posts) || 0,
-    averageEarningsPerPost:
-      Number(profileData.metrics?.averageEarningsPerPost) || 0,
-    totalVolume: Number(profileData.metrics?.totalVolume) || 0,
-  };
-
-  // Prepare chart data for collector stats with fallback values
-  const COLORS = ["#10B981", "#6366F1"];
-
-  // Default to reasonable values if collector stats aren't available
-  const collectorsPercentage =
-    profileData.holderVsTrader?.estimatedCollectors &&
-    profileData.holderVsTrader?.totalHolders
-      ? Math.round(
-          (profileData.holderVsTrader.estimatedCollectors /
-            profileData.holderVsTrader.totalHolders) *
-            100,
-        ) || 75
-      : 75;
-
-  const tradersPercentage = 100 - collectorsPercentage;
-
-  const chartData = [
-    { name: "Collectors", value: collectorsPercentage },
-    { name: "Traders", value: tradersPercentage },
-  ];
 
   return (
     <div className="mb-6 space-y-4">
@@ -382,39 +249,23 @@ export function ShareableAnalyticsCard({
           <div className="text-lime-500 font-bold text-lg font-mono">
             ZORA ANALYTICS
           </div>
-          <div className="text-gray-400 text-sm">Creator Dashboard</div>
         </div>
 
         {/* Profile section */}
         <div className="flex items-start space-x-4 mb-6">
-          {profileData.profile.avatar && !imgError ? (
-            <div className="h-16 w-16 rounded-full overflow-hidden relative border-2 border-lime-500/30 shadow-lg shadow-lime-500/10 flex-shrink-0">
-              <Image
-                src={profileData.profile.avatar}
-                alt={profileData.profile.displayName || handle}
-                fill
-                sizes="64px"
-                className="object-cover rounded-full"
-                onError={handleImageError}
-              />
-            </div>
-          ) : (
-            <div className="h-16 w-16 rounded-full bg-lime-900/20 flex items-center justify-center border-2 border-lime-500/30 shadow-lg shadow-lime-500/10 flex-shrink-0">
-              <span className="text-lime-500 text-xl font-bold">
-                {(profileData.profile.displayName || handle)
-                  ?.charAt(0)
-                  ?.toUpperCase() || "Z"}
-              </span>
-            </div>
-          )}
+          <div className="h-16 w-16 rounded-full overflow-hidden relative border-2 border-lime-500/30 shadow-lg shadow-lime-500/10 flex-shrink-0">
+            <img
+              src={profile?.avatar?.medium || profile?.avatar?.small}
+              alt={profile?.displayName || profile?.handle || "Creator Avatar"}
+              className="object-cover !w-16 !h-16 w-full h-full"
+            />
+          </div>
 
           <div>
             <h2 className="text-xl text-white font-bold">
-              {profileData.profile.displayName || handle}
+              {profile.displayName || profile.handle || handle}
             </h2>
-            <p className="text-gray-400 text-sm">
-              @{profileData.profile.handle || handle}
-            </p>
+            <p className="text-gray-400 text-sm">@{profile.handle || handle}</p>
           </div>
         </div>
 
@@ -423,26 +274,26 @@ export function ShareableAnalyticsCard({
           <div className="bg-[#13151F] p-3 rounded-lg">
             <p className="text-gray-400 text-xs mb-1 font-mono">TOTAL EARNED</p>
             <p className="text-lime-400 text-xl font-bold">
-              {formatCurrency(metrics.totalEarnings)}
+              ${formatCompactNumber(Number(totalEarnings.toFixed(2)))}
             </p>
           </div>
 
           <div className="bg-[#13151F] p-3 rounded-lg">
             <p className="text-gray-400 text-xs mb-1 font-mono">COINS</p>
-            <p className="text-white text-xl font-bold">{metrics.posts}</p>
+            <p className="text-white text-xl font-bold">{totalPosts}</p>
           </div>
 
           <div className="bg-[#13151F] p-3 rounded-lg">
             <p className="text-gray-400 text-xs mb-1 font-mono">AVG EARNINGS</p>
             <p className="text-lime-400 text-xl font-bold">
-              {formatCurrency(metrics.averageEarningsPerPost)}
+              ${formatCompactNumber(Number(avgTotalEarnings.toFixed(2)))}
             </p>
           </div>
 
           <div className="bg-[#13151F] p-3 rounded-lg">
             <p className="text-gray-400 text-xs mb-1 font-mono">TOTAL VOLUME</p>
             <p className="text-white text-xl font-bold">
-              {formatCurrency(metrics.totalVolume)}
+              ${formatCompactNumber(Number(totalVolume.toFixed(2)))}
             </p>
           </div>
         </div>
@@ -452,57 +303,35 @@ export function ShareableAnalyticsCard({
           <p className="text-gray-400 text-xs mb-2 font-mono">
             COLLECTOR BREAKDOWN
           </p>
-          <div className="flex items-center">
-            <div className="w-24 h-24">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={15}
-                    outerRadius={35}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {chartData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="ml-4">
-              <div className="flex items-center mb-2">
-                <div className="w-3 h-3 bg-[#10B981] rounded-full mr-2"></div>
-                <p className="text-white text-sm">
-                  Collectors: {collectorsPercentage}%
-                </p>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-[#6366F1] rounded-full mr-2"></div>
-                <p className="text-white text-sm">
-                  Traders: {tradersPercentage}%
-                </p>
-              </div>
-            </div>
+          <div className="flex h-52 items-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={barChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(date) => {
+                    const d = new Date(date);
+                    return `${d.getMonth() + 1}/${d.getDate()}`;
+                  }}
+                  tick={{ fill: "#999" }}
+                />
+                <YAxis
+                  tickFormatter={(value) => `$${value}`}
+                  tick={{ fill: "#999" }}
+                />
+                <Tooltip
+                  formatter={(value) => `$${Number(value).toFixed(2)}`}
+                  labelStyle={{ color: "#fff" }}
+                />
+                <Bar dataKey="earnings" fill="#8FE388" />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="text-gray-500 text-xs text-center">
-          <p>
-            Generated via Zora Analytics Dashboard •{" "}
-            {new Date().toLocaleDateString()}
-          </p>
         </div>
       </div>
 
       {/* Share buttons */}
-      <div className="flex flex-wrap justify-center gap-3">
+      {/* <div className="flex flex-wrap justify-center gap-3">
         <Button
           onClick={downloadImage}
           disabled={["capturing", "uploading", "sharing"].includes(shareStatus)}
@@ -522,14 +351,14 @@ export function ShareableAnalyticsCard({
         </Button>
 
         <Button
-          onClick={shareToWarpcast}
+          onClick={shareToFarcaster}
           disabled={["capturing", "uploading", "sharing"].includes(shareStatus)}
           className="bg-[#8A63D2] hover:bg-[#7d5bc7] text-white"
           size="sm"
         >
-          {getButtonText("warpcast")}
+          {getButtonText("farcaster")}
         </Button>
-      </div>
+      </div> */}
 
       {errorMessage && (
         <p className="text-red-500 text-xs text-center mt-2">{errorMessage}</p>
