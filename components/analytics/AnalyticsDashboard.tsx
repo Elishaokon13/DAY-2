@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { UserStats } from "./UserStats";
 import { TimelineChart } from "./TimelineChart";
 import { Button } from "../ui/button";
-
 import { ShareableAnalyticsCard } from "./ShareableAnalyticsCard";
 import { Icon } from "@/components/ui/Icon";
 import { getProfile, getProfileBalances, getCoin } from "@zoralabs/coins-sdk";
@@ -75,15 +74,9 @@ interface AnalyticsDashboardProps {
 export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
   const [creatorData, setCreatorData] = useState<AnalyticsResults | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [initialLoadComplete, setInitialLoadComplete] =
-    useState<boolean>(false);
-  const [fullDataLoading, setFullDataLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedCoin, setSelectedCoin] = useState<string | null>(null);
   const [showShareableCard, setShowShareableCard] = useState<boolean>(false);
-
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState<number>(1);
 
   useEffect(() => {
     async function fetchProfileData() {
@@ -132,7 +125,6 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
         const data = await response.json();
         // console.log("Initial creator data fetched:", data);
         setCreatorData(data);
-        setInitialLoadComplete(true);
 
         // Set the first coin as selected by default if available
         if (data.coins.created.items && data.coins.created.items.length > 0) {
@@ -148,73 +140,6 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
 
     fetchInitialData();
   }, [handle]);
-
-  // Load full data after initial data is displayed
-  useEffect(() => {
-    async function fetchFullData() {
-      if (
-        !initialLoadComplete ||
-        !handle ||
-        !creatorData?.coins.created.hasMore
-      )
-        return;
-
-      setFullDataLoading(true);
-
-      try {
-        console.log(`Fetching complete data for handle: ${handle}`);
-        // Use a higher limit to get more data
-        const response = await fetch(
-          `/api/creator-analytics?identifier=${encodeURIComponent(handle)}&fetchAll=true&limit=50`,
-        );
-
-        if (!response.ok) {
-          throw new Error(
-            `Error fetching complete creator data: ${response.statusText}`,
-          );
-        }
-
-        const data = await response.json();
-        console.log("Complete creator data fetched:", data);
-        setCreatorData(data);
-      } catch (err) {
-        console.error("Failed to fetch complete creator data:", err);
-        // Don't set error - we already have initial data
-      } finally {
-        setFullDataLoading(false);
-      }
-    }
-
-    fetchFullData();
-  }, [initialLoadComplete, handle, creatorData?.coins.created.hasMore]);
-
-  // Function to manually reload full data
-  const loadMoreData = async () => {
-    if (!handle) return;
-
-    setFullDataLoading(true);
-
-    try {
-      // Skip cache to force fresh data
-      const response = await fetch(
-        `/api/creator-analytics?identifier=${encodeURIComponent(handle)}&fetchAll=true&limit=100&skipCache=true`,
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Error fetching more creator data: ${response.statusText}`,
-        );
-      }
-
-      const data = await response.json();
-      console.log("More creator data fetched:", data);
-      setCreatorData(data);
-    } catch (err) {
-      console.error("Failed to fetch more creator data:", err);
-    } finally {
-      setFullDataLoading(false);
-    }
-  };
 
   const router = useRouter();
   const handleGoBack = () => {
@@ -428,39 +353,6 @@ export function AnalyticsDashboard({ handle }: AnalyticsDashboardProps) {
             </div>
           </div>
         </div>
-
-        {/* Data loading status */}
-        {fullDataLoading && (
-          <div className="bg-[#1a1e2e] p-3 rounded-lg border border-gray-700">
-            <div className="flex items-center justify-center">
-              <div className="animate-spin h-4 w-4 border-2 border-lime-500 rounded-full border-t-transparent mr-2"></div>
-              <p className="text-gray-400 text-sm">Loading complete data...</p>
-            </div>
-          </div>
-        )}
-
-        {/* Data completeness info */}
-        {creatorData.meta &&
-          creatorData.coins.created.hasMore &&
-          !fullDataLoading && (
-            <div className="bg-[#1a1e2e] p-3 rounded-lg border border-gray-700">
-              <div className="flex flex-col sm:flex-row items-center justify-between">
-                <p className="text-gray-400 text-sm mb-2 sm:mb-0">
-                  Showing {creatorData.coins.created.processed} of{" "}
-                  {creatorData.coins.created.count} coins
-                  {creatorData.meta.isCached && " (cached data)"}
-                </p>
-                <Button
-                  className="bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400 font-mono"
-                  variant="outline"
-                  size="sm"
-                  onClick={loadMoreData}
-                >
-                  Load More Data
-                </Button>
-              </div>
-            </div>
-          )}
 
         {/* Detailed Analytics for Selected Coin */}
         {selectedCoin && (
