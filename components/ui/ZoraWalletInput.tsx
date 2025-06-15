@@ -7,6 +7,7 @@ import { ZoraTokenResponse, ZoraToken } from "@/app/api/zora-tokens/route";
 import { Icon } from "./Icon";
 import { FooterButtons } from "./FooterButtons";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
 export interface ZoraWalletInputProps {
   displayName: string;
@@ -95,7 +96,11 @@ export function ZoraWalletInput({
   return (
     <>
       {tokens.length > 0 && profileData ? (
-        <div className="w-full bg-black">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full bg-black"
+        >
           <Collage
             selectedToken={selectedToken}
             setSelectedToken={setSelectedToken}
@@ -106,28 +111,53 @@ export function ZoraWalletInput({
             onReset={handleReset}
             displayName={profileData.displayName || ""}
           />
-        </div>
+        </motion.div>
       ) : (
-        <div className="flex flex-col items-center justify-center">
-          <div className="w-full max-w-md">
-            <div className="relative z-10 overflow-hidden rounded-xl bg-[rgba(0,0,0,0.5)] shadow-2xl backdrop-blur-xl">
-              {/* Header */}
+        <div className="flex flex-col items-center justify-center min-h-[70vh]">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-md"
+          >
+            <div className="relative z-10 overflow-hidden rounded-2xl bg-gradient-to-b from-[rgba(0,0,0,0.7)] to-[rgba(0,0,0,0.4)] shadow-2xl backdrop-blur-xl border border-gray-800/50">
+              {/* Animated gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-lime-500/10 via-transparent to-purple-500/10 opacity-50"></div>
+              
+              {/* Glow effects */}
+              <div className="absolute -inset-px bg-gradient-to-r from-lime-500/20 to-purple-500/20 blur-sm opacity-20"></div>
+              
+              {/* Content */}
               <div className="relative p-8 text-center">
-                <h2 className="text-2xl font-mono text-gray-300 mb-2">
+                <motion.h2 
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-3xl font-mono text-gray-100 mb-2 bg-clip-text text-transparent bg-gradient-to-r from-lime-400 to-emerald-400"
+                >
                   Zora Creator Analytics
-                </h2>
-                <p className="text-gray-400 text-sm mb-6 font-mono">
+                </motion.h2>
+                <motion.p 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-gray-400 text-sm mb-8 font-mono"
+                >
                   {displayName
                     ? `Welcome ${displayName}! Enter a Zora handle to explore creator earnings.`
                     : "Enter a Zora handle to explore creator earnings."}
-                </p>
+                </motion.p>
 
                 <div className="space-y-6">
-                  <div
-                    className={`relative bg-[#1a1e2e] overflow-hidden ${isFocused ? "ring-1 ring-lime-700/30" : ""}`}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className={`relative bg-[#1a1e2e]/80 overflow-hidden rounded-xl backdrop-blur-sm transition-all duration-300 ${
+                      isFocused ? "ring-2 ring-lime-500/30 shadow-lg shadow-lime-500/20" : "ring-1 ring-gray-800"
+                    }`}
                   >
                     <div className="flex">
-                      <div className="bg-[#1a1e2e] py-4 px-4 text-gray-400 font-mono">
+                      <div className="bg-[#1a1e2e]/50 py-4 px-4 text-gray-400 font-mono border-r border-gray-800/50">
                         @
                       </div>
                       <input
@@ -138,59 +168,77 @@ export function ZoraWalletInput({
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setIsFocused(false)}
                         placeholder="zorahandle"
-                        className="w-full bg-transparent text-gray-300 py-4 pr-6 font-mono tracking-wider focus:outline-none"
-                        style={{
-                          borderLeft: "2px solid rgba(163, 230, 53, 0.3)",
-                        }}
+                        className="w-full bg-transparent text-gray-300 py-4 px-6 font-mono tracking-wider focus:outline-none placeholder:text-gray-600"
                       />
                     </div>
-                  </div>
+                  </motion.div>
 
                   {error && (
-                    <p className="text-red-500 text-sm text-center font-mono">
+                    <motion.p 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-red-400 text-sm text-center font-mono bg-red-500/10 py-2 px-4 rounded-lg border border-red-500/20"
+                    >
                       {error}
-                    </p>
+                    </motion.p>
                   )}
 
-                  <div className="flex gap-4">
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="flex gap-4"
+                  >
                     <button
                       onClick={handleSubmit}
                       disabled={loading || !validateHandle(handle)}
-                      className="flex-1 bg-black border border-gray-700 hover:border-lime-300 text-gray-500 py-4 font-mono tracking-wider transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 bg-black/50 border border-gray-800 hover:border-lime-400/50 hover:bg-lime-950/30 text-gray-400 hover:text-lime-400 py-4 font-mono tracking-wider transition-all duration-300 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-800 disabled:hover:bg-black/50 disabled:hover:text-gray-400"
                     >
-                      {loading ? "CHECKING..." : "GENERATE COLLAGE"}
+                      {loading ? (
+                        <span className="flex items-center justify-center">
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-lime-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          CHECKING...
+                        </span>
+                      ) : "GENERATE COLLAGE"}
                     </button>
 
                     <button
                       onClick={() => handleClick()}
                       disabled={!validateHandle(handle)}
-                      className="flex-1 items-center justify-center bg-lime-900/30 border border-lime-700/50 hover:bg-lime-800/40 text-lime-400 py-4 px-4 font-mono tracking-wider transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex"
+                      className="flex-1 items-center justify-center bg-lime-950/30 border border-lime-700/30 hover:border-lime-400/50 hover:bg-lime-900/40 text-lime-400 py-4 px-4 font-mono tracking-wider transition-all duration-300 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-lime-700/30 disabled:hover:bg-lime-950/30 flex group"
                     >
-                      <Icon name="barChart" size="sm" className="mr-2" />
+                      <Icon name="barChart" size="sm" className="mr-2 transition-transform group-hover:scale-110" />
                       DIRECT ANALYTICS
                     </button>
-                  </div>
+                  </motion.div>
                 </div>
               </div>
 
-              {/* Corner decorations */}
+              {/* Decorative elements */}
               <div className="absolute -top-6 -left-6 w-12 h-12">
-                <div className="w-full h-full relative">
-                  <div className="absolute inset-0 border border-lime-700/40 rotate-45"></div>
+                <div className="w-full h-full relative animate-pulse">
+                  <div className="absolute inset-0 border border-lime-700/20 rotate-45"></div>
                 </div>
               </div>
 
               <div className="absolute -bottom-6 -right-6 w-12 h-12">
-                <div className="w-full h-full relative">
-                  <div className="absolute inset-0 border border-lime-700/40 rotate-45"></div>
+                <div className="w-full h-full relative animate-pulse">
+                  <div className="absolute inset-0 border border-lime-700/20 rotate-45"></div>
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Display token collage when tokens are loaded */}
           {tokens.length > 0 && (
-            <div className="mt-8 w-full">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-8 w-full"
+            >
               <h3 className="text-lg font-mono text-gray-300 mb-4 text-center">
                 {profileData?.displayName}'s Tokens
               </h3>
@@ -200,7 +248,7 @@ export function ZoraWalletInput({
                 selectedToken={null}
                 setSelectedToken={() => {}}
               />
-            </div>
+            </motion.div>
           )}
         </div>
       )}
