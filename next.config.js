@@ -11,7 +11,7 @@ const nextConfig = {
   },
   // Silence warnings for WalletConnect and fix Wagmi worker issues
   // https://github.com/WalletConnect/walletconnect-monorepo/issues/1908
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.externals.push("pino-pretty", "lokijs", "encoding");
     
     // Resolve fallbacks for Node.js modules
@@ -22,7 +22,8 @@ const nextConfig = {
       tls: false,
     };
     
-    // Keep optimization enabled for production builds
+    // Temporarily disable minification to fix HeartbeatWorker issue
+    config.optimization.minimize = false;
     
     return config;
   },
