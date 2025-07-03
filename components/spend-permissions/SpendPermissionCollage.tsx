@@ -51,12 +51,12 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
   useEffect(() => {
     checkExistingPermission();
     
-    // Debug MiniKit environment
+    // Debug Farcaster MiniKit environment
     const debugEnv = () => {
       const info = [];
-      info.push(`User: ${context?.user?.username || 'none'}`);
-      info.push(`Window.ethereum: ${typeof window !== 'undefined' && window.ethereum ? 'available' : 'not available'}`);
-      info.push(`User agent: ${typeof window !== 'undefined' ? window.navigator.userAgent.includes('Warpcast') ? 'Warpcast' : 'Other' : 'SSR'}`);
+      info.push(`FC User: ${context?.user?.username || 'none'}`);
+      info.push(`Wallet Provider: ${typeof window !== 'undefined' && window.ethereum ? 'detected' : 'missing'}`);
+      info.push(`Environment: ${typeof window !== 'undefined' ? window.navigator.userAgent.includes('Warpcast') ? 'Warpcast' : 'Browser' : 'SSR'}`);
       setDebugInfo(info.join(' | '));
     };
     
@@ -71,40 +71,45 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
 
     setLoading(true);
     setError(null);
-    setDebugInfo("Starting wallet connection...");
+    setDebugInfo("Starting Farcaster wallet connection...");
 
     try {
-      // For MiniKit in Farcaster, we need to request wallet connection
-      // MiniKit provides wallet functionality through the embedded wallet
       let userAddress: string | undefined;
       
-      setDebugInfo("Checking for wallet provider...");
+      setDebugInfo("Checking MiniKit environment...");
       
-      // Check if we're in a MiniKit environment (Farcaster)
-      if (typeof window !== 'undefined' && window.ethereum) {
-        setDebugInfo("Wallet provider found, requesting accounts...");
-        try {
-          // Request wallet connection through MiniKit
-          const accounts = await window.ethereum.request({
-            method: "eth_requestAccounts",
-          });
-          userAddress = accounts?.[0];
-          setDebugInfo(`Wallet connected: ${userAddress?.slice(0, 10)}...`);
-        } catch (walletError) {
-          console.warn("Wallet connection failed:", walletError);
-          setDebugInfo("Wallet connection failed, using demo mode");
-          // For demo purposes, we'll use the Farcaster username as identifier
-          // In production, you'd need proper wallet integration
-          userAddress = `demo_${context.user.username}`;
+      // First, check if we're in a Farcaster MiniKit environment
+      if (typeof window !== 'undefined') {
+        // Check for MiniKit specific wallet provider
+        const provider = window.ethereum;
+        
+        if (provider) {
+          setDebugInfo("MiniKit wallet provider detected, connecting...");
+          try {
+            // Request wallet connection through Farcaster's embedded wallet
+            const accounts = await provider.request({
+              method: "eth_requestAccounts",
+            }) as string[];
+            
+            if (accounts && accounts.length > 0) {
+              userAddress = accounts[0];
+              setDebugInfo(`Farcaster wallet connected: ${userAddress.slice(0, 10)}...`);
+            } else {
+              throw new Error("No accounts returned from Farcaster wallet");
+            }
+          } catch (walletError: any) {
+            console.error("Farcaster wallet connection failed:", walletError);
+            throw new Error(`Farcaster wallet connection failed: ${walletError.message || 'Unknown error'}`);
+          }
+        } else {
+          throw new Error("Farcaster wallet provider not found. Please ensure you're using Warpcast with wallet enabled.");
         }
       } else {
-        setDebugInfo("No wallet provider found, using demo mode");
-        // Fallback for development/testing
-        userAddress = `demo_${context.user.username}`;
+        throw new Error("Window object not available. Please ensure you're running in a browser environment.");
       }
       
       if (!userAddress) {
-        throw new Error("Unable to connect wallet. Please ensure you're using Warpcast with wallet enabled.");
+        throw new Error("Failed to get wallet address from Farcaster. Please try again.");
       }
 
       // Create spend permission object
@@ -120,56 +125,63 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
         extraData: "0x" as Hex,
       };
 
-      // Request signature from user
-      let signature: string;
+      // Request signature from user using Farcaster wallet
+      setDebugInfo("Requesting signature from Farcaster wallet...");
       
-      if (userAddress.startsWith('demo_')) {
-        // Demo mode - simulate signature
-        signature = `0x${'0'.repeat(130)}`; // Mock signature for demo
-        console.log("Demo mode: Using mock signature");
-      } else {
-        // Real wallet signature
-        signature = await window.ethereum.request({
-          method: "eth_signTypedData_v4",
-          params: [
-            userAddress,
-            JSON.stringify({
-              domain: {
-                name: "Spend Permission Manager",
-                version: "1",
-                chainId: 8453, // Base mainnet
-                verifyingContract: spendPermissionManagerAddress,
-              },
-              types: {
-                SpendPermission: [
-                  { name: "account", type: "address" },
-                  { name: "spender", type: "address" },
-                  { name: "token", type: "address" },
-                  { name: "allowance", type: "uint160" },
-                  { name: "period", type: "uint48" },
-                  { name: "start", type: "uint48" },
-                  { name: "end", type: "uint48" },
-                  { name: "salt", type: "uint256" },
-                  { name: "extraData", type: "bytes" },
-                ],
-              },
-              primaryType: "SpendPermission",
-              message: spendPermission,
-            }),
-          ],
-        });
-      }
+      const signature = await window.ethereum!.request({
+        method: "eth_signTypedData_v4",
+        params: [
+          userAddress,
+          JSON.stringify({
+            domain: {
+              name: "Spend Permission Manager",
+              version: "1",
+              chainId: 8453, // Base mainnet
+              verifyingContract: spendPermissionManagerAddress,
+            },
+            types: {
+              SpendPermission: [
+                { name: "account", type: "address" },
+                { name: "spender", type: "address" },
+                { name: "token", type: "address" },
+                { name: "allowance", type: "uint160" },
+                { name: "period", type: "uint48" },
+                { name: "start", type: "uint48" },
+                { name: "end", type: "uint48" },
+                { name: "salt", type: "uint256" },
+                { name: "extraData", type: "bytes" },
+              ],
+            },
+            primaryType: "SpendPermission",
+            message: spendPermission,
+          }),
+        ],
+      }) as string;
+      
+      setDebugInfo("Signature obtained, submitting to backend...");
 
       // Submit to backend for approval (with paymaster)
+      setDebugInfo("Submitting spend permission to backend...");
+      
+      // Convert BigInt values to strings for JSON serialization
+      const serializedSpendPermission = {
+        ...spendPermission,
+        allowance: spendPermission.allowance.toString(),
+        period: spendPermission.period.toString(),
+        start: spendPermission.start.toString(),
+        end: spendPermission.end.toString(),
+        salt: spendPermission.salt.toString(),
+      };
+      
       const response = await fetch('/api/spend-permission/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          spendPermission,
+          spendPermission: serializedSpendPermission,
           signature,
           userAddress,
           farcasterUsername: context.user.username,
-        }, (key, value) => typeof value === 'bigint' ? value.toString() : value),
+        }),
       });
 
       const result = await response.json();
@@ -179,9 +191,24 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
       } else {
         throw new Error(result.message || 'Failed to approve spend permission');
       }
-    } catch (err) {
-      console.error('Spend permission request failed:', err);
-      setError(err instanceof Error ? err.message : 'Failed to setup spend permission');
+    } catch (err: any) {
+      console.error('Farcaster wallet connection failed:', err);
+      
+      // Provide specific error messages for common Farcaster wallet issues
+      let errorMessage = 'Failed to setup spend permission';
+      
+      if (err.message?.includes('wallet provider not found')) {
+        errorMessage = 'Farcaster wallet not detected. Please ensure you are using Warpcast with wallet enabled.';
+      } else if (err.message?.includes('User rejected')) {
+        errorMessage = 'Wallet connection was rejected. Please try again and approve the connection.';
+      } else if (err.message?.includes('connection failed')) {
+        errorMessage = 'Failed to connect to Farcaster wallet. Please check your wallet settings and try again.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
+      setDebugInfo(`Error: ${err.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }

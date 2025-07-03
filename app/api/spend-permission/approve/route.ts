@@ -22,15 +22,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { spendPermission, signature, userAddress, farcasterUsername } = body;
     
-    // Convert string values back to BigInt for processing
-    if (spendPermission.salt && typeof spendPermission.salt === 'string') {
-      spendPermission.salt = BigInt(spendPermission.salt);
-    }
-    if (spendPermission.allowance && typeof spendPermission.allowance === 'string') {
-      spendPermission.allowance = BigInt(spendPermission.allowance);
-    }
+    // Convert string values back to numbers/BigInt for processing
+    const processedSpendPermission = {
+      ...spendPermission,
+      allowance: typeof spendPermission.allowance === 'string' ? BigInt(spendPermission.allowance) : spendPermission.allowance,
+      period: typeof spendPermission.period === 'string' ? parseInt(spendPermission.period) : spendPermission.period,
+      start: typeof spendPermission.start === 'string' ? parseInt(spendPermission.start) : spendPermission.start,
+      end: typeof spendPermission.end === 'string' ? parseInt(spendPermission.end) : spendPermission.end,
+      salt: typeof spendPermission.salt === 'string' ? BigInt(spendPermission.salt) : spendPermission.salt,
+    };
 
-    if (!spendPermission || !signature || !userAddress || !farcasterUsername) {
+    if (!processedSpendPermission || !signature || !userAddress || !farcasterUsername) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -42,9 +44,9 @@ export async function POST(request: NextRequest) {
     console.log("Simulating spend permission approval with paymaster...");
     console.log("User:", farcasterUsername, "Address:", userAddress);
     console.log("Permission details:", {
-      allowance: spendPermission.allowance,
-      period: spendPermission.period,
-      token: spendPermission.token,
+      allowance: processedSpendPermission.allowance.toString(),
+      period: processedSpendPermission.period,
+      token: processedSpendPermission.token,
     });
 
     // Simulate transaction delay
@@ -56,8 +58,8 @@ export async function POST(request: NextRequest) {
       userAddress,
       farcasterUsername,
       createdAt: Date.now(),
-      expiresAt: Date.now() + (spendPermission.period * 1000), // Convert seconds to milliseconds
-      spendPermission,
+      expiresAt: Date.now() + (processedSpendPermission.period * 1000), // Convert seconds to milliseconds
+      spendPermission: processedSpendPermission,
       signature,
     };
 
