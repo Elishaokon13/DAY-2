@@ -33,7 +33,38 @@ function getSpenderWalletClient() {
     throw new Error("SPENDER_PRIVATE_KEY environment variable is not set");
   }
   
-  const spenderAccount = privateKeyToAccount(spenderPrivateKey as `0x${string}`);
+  // Ensure the private key has the correct format
+  let formattedPrivateKey = spenderPrivateKey.trim();
+  
+  console.log(`Original private key length: ${spenderPrivateKey.length}`);
+  console.log(`Trimmed private key length: ${formattedPrivateKey.length}`);
+  console.log(`Private key starts with 0x: ${formattedPrivateKey.startsWith('0x')}`);
+  
+  // Add 0x prefix if missing
+  if (!formattedPrivateKey.startsWith('0x')) {
+    formattedPrivateKey = '0x' + formattedPrivateKey;
+    console.log(`Added 0x prefix, new length: ${formattedPrivateKey.length}`);
+  }
+  
+  // Validate private key length (should be 66 characters total: 0x + 64 hex chars)
+  if (formattedPrivateKey.length !== 66) {
+    console.error(`Private key validation failed:`);
+    console.error(`- Length: ${formattedPrivateKey.length} (expected 66)`);
+    console.error(`- First 10 chars: ${formattedPrivateKey.substring(0, 10)}`);
+    console.error(`- Last 10 chars: ${formattedPrivateKey.substring(formattedPrivateKey.length - 10)}`);
+    throw new Error(`Invalid private key length: ${formattedPrivateKey.length}. Expected 66 characters (0x + 64 hex chars)`);
+  }
+  
+  // Validate that it's a valid hex string
+  if (!/^0x[0-9a-fA-F]{64}$/.test(formattedPrivateKey)) {
+    console.error(`Private key format validation failed:`);
+    console.error(`- Pattern test failed for: ${formattedPrivateKey.substring(0, 10)}...${formattedPrivateKey.substring(formattedPrivateKey.length - 10)}`);
+    throw new Error("Invalid private key format. Must be a 64-character hex string with 0x prefix");
+  }
+  
+  console.log(`Private key validation successful`);
+  
+  const spenderAccount = privateKeyToAccount(formattedPrivateKey as `0x${string}`);
   
   return createWalletClient({
     account: spenderAccount,

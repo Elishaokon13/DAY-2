@@ -494,4 +494,22 @@ config.optimization.minimize = false;
 - ✅ Transactions execute successfully on Base mainnet
 - ✅ Proper error handling and logging
 - ✅ Secure wallet configuration
-- ✅ Ready for live deployment with proper environment setup 
+- ✅ Ready for live deployment with proper environment setup
+
+### Latest Update: Reduced Spend Permission Allowance
+**Status**: ✅ COMPLETED
+
+**Change**: Updated spend permission allowance from 10 USDC to 1 USDC for better user experience and reduced risk.
+
+**Files Updated**:
+- `lib/spend-permission-constants.ts` - Updated SPEND_PERMISSION_CONFIG allowance and maxCollages
+- `components/spend-permissions/SpendPermissionCollage.tsx` - Updated UI text to reflect new limits
+- `bbq7.md` - Updated documentation to reflect new allowance amounts
+
+**New Configuration**:
+- **Allowance**: 1 USDC (down from 10 USDC)
+- **Max Collages**: 20 collages (down from 200 collages)
+- **Collage Price**: 0.05 USDC (unchanged)
+- **Period**: 30 days (unchanged)
+
+**Impact**: More conservative and user-friendly spend limits while maintaining full functionality. 

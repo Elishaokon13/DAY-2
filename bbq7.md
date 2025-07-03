@@ -18,8 +18,8 @@
 ### ✅ 2. Spend Permissions & Sub Accounts
 - **Implementation**: USDC spending authorization for collage generation
 - **Features**:
-  - Users authorize spending up to 10 USDC for collage generation
-  - 0.05 USDC per collage generation (200 collages max)
+  - Users authorize spending up to 1 USDC for collage generation
+- 0.05 USDC per collage generation (20 collages max)
   - 30-day permission validity
   - Automatic spending without additional signatures
   - Allowance tracking and management
@@ -84,7 +84,7 @@
 
 ### 3. Spend Permission Setup
 - Click "Generate with Spend Permission"
-- Authorize spending up to 10 USDC
+- Authorize spending up to 1 USDC
 - Paymaster sponsors gas fees for approval
 - Permission valid for 30 days
 

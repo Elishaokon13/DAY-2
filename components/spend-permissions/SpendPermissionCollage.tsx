@@ -342,11 +342,11 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
           <ul className="space-y-2 text-sm text-gray-300">
             <li className="flex items-center gap-2">
               <Icon name="check" size="sm" className="text-purple-400" />
-              Spend up to 10 USDC for collage generation
+              Spend up to 1 USDC for collage generation
             </li>
             <li className="flex items-center gap-2">
               <Icon name="check" size="sm" className="text-purple-400" />
-              0.05 USDC per collage (200 collages max)
+              0.05 USDC per collage (20 collages max)
             </li>
             <li className="flex items-center gap-2">
               <Icon name="check" size="sm" className="text-purple-400" />

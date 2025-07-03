@@ -901,8 +901,8 @@ export const SPENDER_ADDRESS = process.env.NEXT_PUBLIC_SPENDER_ADDRESS as Addres
 
 // Spend permission configuration
 export const SPEND_PERMISSION_CONFIG = {
-  allowance: BigInt(10 * 1e6), // 10 USDC (6 decimals)
+  allowance: BigInt(1 * 1e6), // 1 USDC (6 decimals)
   period: BigInt(30 * 24 * 60 * 60), // 30 days in seconds
   collagePrice: BigInt(0.05 * 1e6), // 0.05 USDC per collage
-  maxCollages: 200, // 10 USDC / 0.05 USDC = 200 collages
+  maxCollages: 20, // 1 USDC / 0.05 USDC = 20 collages
 } as const; 
