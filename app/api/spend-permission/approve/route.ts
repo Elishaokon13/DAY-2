@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createPublicClient, http, createWalletClient, custom } from "viem";
+import { createPublicClient, http, createWalletClient } from "viem";
 import { base } from "viem/chains";
+import { privateKeyToAccount } from "viem/accounts";
 import { 
   spendPermissionManagerAddress, 
   spendPermissionManagerAbi,
@@ -25,14 +26,21 @@ const publicClient = createPublicClient({
   transport: http(process.env.NEXT_PUBLIC_PROVIDER_URL),
 });
 
-// Wallet client for sending transactions (configure with a private key or provider)
-const walletClient = createWalletClient({
-  chain: base,
-  transport: custom({ request: async (args) => {
-    // Implement your wallet provider logic here (e.g., using a private key or a signer)
-    throw new Error("Wallet provider not configured");
-  }}),
-});
+// Create wallet client for the spender (to execute transactions)
+function getSpenderWalletClient() {
+  const spenderPrivateKey = process.env.SPENDER_PRIVATE_KEY;
+  if (!spenderPrivateKey) {
+    throw new Error("SPENDER_PRIVATE_KEY environment variable is not set");
+  }
+  
+  const spenderAccount = privateKeyToAccount(spenderPrivateKey as `0x${string}`);
+  
+  return createWalletClient({
+    account: spenderAccount,
+    chain: base,
+    transport: http(process.env.NEXT_PUBLIC_PROVIDER_URL),
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,17 +76,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call the contract's approveWithSignature function
-    const { request: txRequest } = await publicClient.simulateContract({
+    // Log the spend permission and signature for debugging
+    console.log("Processed spend permission:", JSON.stringify({
+      ...processedSpendPermission,
+      allowance: processedSpendPermission.allowance.toString(),
+      salt: processedSpendPermission.salt.toString(),
+    }, null, 2));
+    console.log("Signature:", signature);
+
+    // Get the spender wallet client
+    const spenderWalletClient = getSpenderWalletClient();
+
+    // Execute the approveWithSignature transaction
+    console.log("Executing approveWithSignature transaction...");
+    const txHash = await spenderWalletClient.writeContract({
       address: spendPermissionManagerAddress,
       abi: spendPermissionManagerAbi,
       functionName: "approveWithSignature",
       args: [processedSpendPermission, signature as `0x${string}`],
-      account: userAddress as `0x${string}`,
     });
 
-    // Send the transaction (requires a configured wallet client)
-    const txHash = await walletClient.writeContract(txRequest);
+    console.log("Transaction submitted:", txHash);
 
     // Wait for transaction confirmation
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -87,7 +105,9 @@ export async function POST(request: NextRequest) {
       throw new Error("Transaction failed");
     }
 
-    // Store the permission with stringified BigInt values
+    console.log("Transaction confirmed:", receipt.transactionHash);
+
+    // Store the permission with stringified BigInt values (for demo purposes)
     userPermissions[userAddress] = {
       hasPermission: true,
       userAddress,
@@ -105,7 +125,7 @@ export async function POST(request: NextRequest) {
     const responseData = {
       success: true,
       message: "Spend permission approved successfully",
-      transactionHash: txHash,
+      transactionHash: receipt.transactionHash,
       permission: userPermissions[userAddress],
     };
 
@@ -115,11 +135,11 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error("Error approving spend permission:", error);
+    console.error("Error processing spend permission:", error);
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to approve spend permission",
+        error: "Failed to process spend permission",
         message: error instanceof Error ? error.message : "Unknown error"
       },
       { status: error instanceof SyntaxError ? 400 : 500 }

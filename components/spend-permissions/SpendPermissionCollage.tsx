@@ -108,6 +108,11 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
       const userAddress = address;
       setDebugInfo(`Farcaster wallet connected: ${userAddress.slice(0, 10)}...`);
 
+      // Generate consistent values for both objects
+      const currentTime = Math.floor(Date.now() / 1000);
+      const endTime = currentTime + 86400 * 365;
+      const saltValue = Math.floor(Math.random() * 1000000);
+
       // Create the spend permission object for the API (with strings)
       const spendPermissionForApi = {
         account: userAddress,
@@ -115,9 +120,9 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
         token: USDC_ADDRESS,
         allowance: SPEND_PERMISSION_CONFIG.allowance.toString(),
         period: SPEND_PERMISSION_CONFIG.period.toString(),
-        start: Math.floor(Date.now() / 1000).toString(),
-        end: (Math.floor(Date.now() / 1000) + 86400 * 365).toString(),
-        salt: Math.floor(Math.random() * 1000000).toString(),
+        start: currentTime.toString(),
+        end: endTime.toString(),
+        salt: saltValue.toString(),
         extraData: "0x" as Hex,
       };
 
@@ -128,9 +133,9 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
         token: USDC_ADDRESS,
         allowance: SPEND_PERMISSION_CONFIG.allowance,
         period: Number(SPEND_PERMISSION_CONFIG.period),
-        start: Math.floor(Date.now() / 1000),
-        end: Math.floor(Date.now() / 1000) + 86400 * 365,
-        salt: BigInt(Math.floor(Math.random() * 1000000)),
+        start: currentTime,
+        end: endTime,
+        salt: BigInt(saltValue),
         extraData: "0x" as `0x${string}`,
       };
 
