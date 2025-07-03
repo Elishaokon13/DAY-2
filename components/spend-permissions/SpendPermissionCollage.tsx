@@ -8,6 +8,7 @@ import { Address, Hex } from "viem";
 import { Icon } from "@/components/ui/Icon";
 import { 
   spendPermissionManagerAddress, 
+  spendPermissionManagerAbi,
   USDC_ADDRESS,
   SPENDER_ADDRESS,
   SPEND_PERMISSION_CONFIG
@@ -21,7 +22,17 @@ interface SpendPermissionCollageProps {
 export function SpendPermissionCollage({ displayName, onCollageGenerated }: SpendPermissionCollageProps) {
   const [isDisabled, setIsDisabled] = useState(false);
   const [signature, setSignature] = useState<Hex>();
-  const [spendPermission, setSpendPermission] = useState<object>();
+  const [spendPermission, setSpendPermission] = useState<{
+    account: Address;
+    spender: Address;
+    token: Address;
+    allowance: bigint;
+    period: number;
+    start: number;
+    end: number;
+    salt: bigint;
+    extraData: Hex;
+  }>();
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>("");
 
@@ -130,10 +141,14 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
   }
 
   async function handleGenerateCollage() {
-    setIsDisabled(true);
-    let data;
+    if (!address || !displayName || !spendPermission || !signature) {
+      throw new Error("Missing required data");
+    }
     
     try {
+      // Step 1: Approve spend permission with paymaster (gas-free for user)
+      console.log("Approving spend permission with paymaster sponsorship...");
+      
       const replacer = (key: string, value: any) => {
         if (typeof value === "bigint") {
           return value.toString();
@@ -141,7 +156,7 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
         return value;
       };
       
-      const response = await fetch("/api/spend-permission/approve", {
+      const approvalResponse = await fetch("/api/spend-permission/approve", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -157,16 +172,21 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
         ),
       });
       
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
+      if (!approvalResponse.ok) {
+        const errorText = await approvalResponse.text();
+        console.error("Approval API Error Response:", errorText);
+        throw new Error(`Approval failed: ${approvalResponse.status} - ${errorText}`);
       }
       
-      const approveResult = await response.json();
-      if (!approveResult.success) {
-        throw new Error(approveResult.message || "Failed to approve spend permission");
+      const approvalResult = await approvalResponse.json();
+      console.log("Spend permission approved with paymaster:", approvalResult);
+      
+      if (!approvalResult.success) {
+        throw new Error(approvalResult.message || "Failed to approve spend permission");
       }
 
-      // Now generate the collage
+      // Step 2: Generate the collage with USDC payment
+      console.log("Generating collage with USDC payment...");
       const collageResponse = await fetch('/api/collage/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -174,23 +194,28 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
           displayName,
           farcasterUsername: displayName,
           fee: "0.05",
+          userAddress: address,
+          spendPermission: JSON.stringify(spendPermission, (key, value) =>
+            typeof value === 'bigint' ? value.toString() : value
+          ),
+          signature,
         }),
       });
 
       const collageResult = await collageResponse.json();
+      console.log("Collage generation result:", collageResult);
+      
       if (!collageResult.success) {
         throw new Error(collageResult.message || "Failed to generate collage");
       }
 
-      data = collageResult;
       onCollageGenerated();
+      return collageResult;
     } catch (e) {
       console.error(e);
       setError(e instanceof Error ? e.message : "Failed to generate collage");
+      throw e;
     }
-    
-    setIsDisabled(false);
-    return data;
   }
 
   // Show success state if collage was generated
@@ -211,8 +236,9 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
         </div>
         
         <div className="bg-black/30 p-4 rounded-lg mb-4">
-          <p className="text-lime-400 text-sm mb-2 font-mono">TRANSACTION DETAILS</p>
-          <p className="text-white text-sm">✅ Charged 0.05 USDC (gas fees sponsored)</p>
+          <p className="text-lime-400 text-sm mb-2 font-mono">PAYMENT BREAKDOWN</p>
+          <p className="text-white text-sm">✅ Approval: Gas fees sponsored by paymaster</p>
+          <p className="text-white text-sm">✅ Collage: 0.05 USDC (from spend permission)</p>
           <p className="text-gray-400 text-xs mt-1">Your collage is ready for sharing!</p>
         </div>
 
@@ -295,7 +321,7 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
             </li>
             <li className="flex items-center gap-2">
               <Icon name="check" size="sm" className="text-purple-400" />
-              Gas fees sponsored by Paymaster
+              Gas fees sponsored by paymaster (completely free)
             </li>
             <li className="flex items-center gap-2">
               <Icon name="check" size="sm" className="text-purple-400" />
@@ -363,7 +389,7 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
 
       <button
         onClick={() => refetch()}
-        disabled={isDisabled}
+        disabled={!signature || isDisabled}
         className="w-full bg-gradient-to-r from-lime-600 to-emerald-600 hover:from-lime-700 hover:to-emerald-700 text-white font-mono tracking-wider py-3 rounded-xl transition-all duration-300 disabled:opacity-50"
       >
         {isDisabled ? (
@@ -372,10 +398,10 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            Generating collage...
+            Processing...
           </span>
         ) : (
-          "Generate Collage (0.05 USDC)"
+          "Generate Collage (0.05 USDC + Free Gas)"
         )}
       </button>
 

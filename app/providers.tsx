@@ -16,6 +16,9 @@ const config = createConfig({
   connectors: [miniAppConnector()],
 });
 
+// Export the config for use in other components
+export { config };
+
 // Create a client for React Query
 const queryClient = new QueryClient();
 

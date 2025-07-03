@@ -897,7 +897,11 @@ export const spendPermissionManagerAbi = [
 
 // Additional constants for the app
 export const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as Address; // Base USDC
-export const SPENDER_ADDRESS = process.env.NEXT_PUBLIC_SPENDER_ADDRESS as Address;
+export const SPENDER_ADDRESS = "0x1B958A48373109E9146A950a75F5bD25B845143b" as Address; // Our backend spender address
+
+// Paymaster configuration for Base
+export const PAYMASTER_URL = "https://api.developer.coinbase.com/rpc/v1/base/paymaster";
+export const PAYMASTER_POLICY_ID = process.env.NEXT_PUBLIC_PAYMASTER_POLICY_ID || "";
 
 // Spend permission configuration
 export const SPEND_PERMISSION_CONFIG = {

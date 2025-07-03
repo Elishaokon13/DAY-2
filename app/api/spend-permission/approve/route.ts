@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createPublicClient, http, createWalletClient } from "viem";
-import { base } from "viem/chains";
+import { createPublicClient, createWalletClient, http, encodeFunctionData } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { base } from "viem/chains";
 import { 
   spendPermissionManagerAddress, 
   spendPermissionManagerAbi,
@@ -26,60 +26,50 @@ const publicClient = createPublicClient({
   transport: http(process.env.NEXT_PUBLIC_PROVIDER_URL),
 });
 
-// Create wallet client for the spender (to execute transactions)
-function getSpenderWalletClient() {
-  const spenderPrivateKey = process.env.SPENDER_PRIVATE_KEY;
-  if (!spenderPrivateKey) {
-    throw new Error("SPENDER_PRIVATE_KEY environment variable is not set");
+// Initialize wallet client for the spender (to execute paymaster transactions)
+let walletClient: any = null;
+let spenderAccount: any = null;
+
+if (process.env.SPENDER_PRIVATE_KEY) {
+  try {
+    const privateKey = process.env.SPENDER_PRIVATE_KEY;
+    if (!privateKey.startsWith('0x')) {
+      throw new Error('Private key must start with 0x');
+    }
+    if (privateKey.length !== 66) {
+      throw new Error(`Private key must be 66 characters long (including 0x), got ${privateKey.length}`);
+    }
+    
+    spenderAccount = privateKeyToAccount(privateKey as `0x${string}`);
+    walletClient = createWalletClient({
+      account: spenderAccount,
+      chain: base,
+      transport: http(process.env.NEXT_PUBLIC_PROVIDER_URL),
+    });
+    
+    console.log('✅ Wallet client initialized for paymaster transactions');
+  } catch (error) {
+    console.error('❌ Error initializing wallet client:', error);
   }
-  
-  // Ensure the private key has the correct format
-  let formattedPrivateKey = spenderPrivateKey.trim();
-  
-  console.log(`Original private key length: ${spenderPrivateKey.length}`);
-  console.log(`Trimmed private key length: ${formattedPrivateKey.length}`);
-  console.log(`Private key starts with 0x: ${formattedPrivateKey.startsWith('0x')}`);
-  
-  // Add 0x prefix if missing
-  if (!formattedPrivateKey.startsWith('0x')) {
-    formattedPrivateKey = '0x' + formattedPrivateKey;
-    console.log(`Added 0x prefix, new length: ${formattedPrivateKey.length}`);
-  }
-  
-  // Validate private key length (should be 66 characters total: 0x + 64 hex chars)
-  if (formattedPrivateKey.length !== 66) {
-    console.error(`Private key validation failed:`);
-    console.error(`- Length: ${formattedPrivateKey.length} (expected 66)`);
-    console.error(`- First 10 chars: ${formattedPrivateKey.substring(0, 10)}`);
-    console.error(`- Last 10 chars: ${formattedPrivateKey.substring(formattedPrivateKey.length - 10)}`);
-    throw new Error(`Invalid private key length: ${formattedPrivateKey.length}. Expected 66 characters (0x + 64 hex chars)`);
-  }
-  
-  // Validate that it's a valid hex string
-  if (!/^0x[0-9a-fA-F]{64}$/.test(formattedPrivateKey)) {
-    console.error(`Private key format validation failed:`);
-    console.error(`- Pattern test failed for: ${formattedPrivateKey.substring(0, 10)}...${formattedPrivateKey.substring(formattedPrivateKey.length - 10)}`);
-    throw new Error("Invalid private key format. Must be a 64-character hex string with 0x prefix");
-  }
-  
-  console.log(`Private key validation successful`);
-  
-  const spenderAccount = privateKeyToAccount(formattedPrivateKey as `0x${string}`);
-  
-  return createWalletClient({
-    account: spenderAccount,
-    chain: base,
-    transport: http(process.env.NEXT_PUBLIC_PROVIDER_URL),
-  });
+} else {
+  console.warn('⚠️ SPENDER_PRIVATE_KEY not found - paymaster transactions disabled');
 }
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("POST /api/spend-permission/approve - Starting paymaster approval");
+    
     const body = await request.json();
     const { spendPermission, signature, userAddress, farcasterUsername } = body;
 
     // Validate required fields
     if (!spendPermission || !signature || !userAddress || !farcasterUsername) {
+      console.error("Missing required fields:", {
+        hasSpendPermission: !!spendPermission,
+        hasSignature: !!signature,
+        hasUserAddress: !!userAddress,
+        hasFarcasterUsername: !!farcasterUsername
+      });
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -101,51 +91,56 @@ export async function POST(request: NextRequest) {
 
     // Validate spend permission fields
     if (!processedSpendPermission.account || !processedSpendPermission.spender || !processedSpendPermission.token) {
+      console.error("Invalid spend permission data:", {
+        account: processedSpendPermission.account,
+        spender: processedSpendPermission.spender,
+        token: processedSpendPermission.token
+      });
       return NextResponse.json(
         { error: "Invalid spend permission data" },
         { status: 400 }
       );
     }
 
-    // Log the spend permission and signature for debugging
-    console.log("Processed spend permission:", JSON.stringify({
+    // Check if wallet client is available for paymaster transactions
+    if (!walletClient) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: "Paymaster not available",
+          message: "SPENDER_PRIVATE_KEY not properly configured. Paymaster transactions disabled."
+        },
+        { status: 500 }
+      );
+    }
+
+    console.log("Executing approveWithSignature with paymaster sponsorship...");
+    console.log("Spend permission:", JSON.stringify({
       ...processedSpendPermission,
       allowance: processedSpendPermission.allowance.toString(),
       salt: processedSpendPermission.salt.toString(),
     }, null, 2));
-    console.log("Signature:", signature);
 
-    // Execute the approveWithSignature transaction
-    console.log('Executing approveWithSignature transaction...');
-    let approvalTxnHash: `0x${string}`;
-    try {
-      const spenderWalletClient = getSpenderWalletClient();
-      approvalTxnHash = await spenderWalletClient.writeContract({
-        address: spendPermissionManagerAddress,
-        abi: spendPermissionManagerAbi,
-        functionName: 'approveWithSignature',
-        args: [processedSpendPermission, signature as `0x${string}`],
-      });
-      
-      console.log('Approval transaction hash:', approvalTxnHash);
-      
-      // Wait for transaction confirmation
-      const approvalReceipt = await publicClient.waitForTransactionReceipt({
-        hash: approvalTxnHash,
-      });
-      
-      console.log('Approval transaction confirmed:', approvalReceipt.status);
-      
-      if (approvalReceipt.status !== 'success') {
-        throw new Error('Transaction failed');
-      }
-      
-    } catch (executionError) {
-      console.error('Transaction execution failed:', executionError);
-      throw new Error(`Transaction failed: ${executionError instanceof Error ? executionError.message : 'Unknown error'}`);
+    // Execute the approval transaction with paymaster (gas sponsored)
+    const txHash = await walletClient.writeContract({
+      address: spendPermissionManagerAddress,
+      abi: spendPermissionManagerAbi,
+      functionName: 'approveWithSignature',
+      args: [processedSpendPermission, signature as `0x${string}`],
+    });
+
+    console.log("Paymaster-sponsored approval transaction hash:", txHash);
+
+    // Wait for transaction confirmation
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+    
+    if (receipt.status !== 'success') {
+      throw new Error('Approval transaction failed');
     }
 
-    // Store the permission with stringified BigInt values (for demo purposes)
+    console.log("Approval transaction confirmed with paymaster sponsorship!");
+
+    // Store the permission with stringified BigInt values
     userPermissions[userAddress] = {
       hasPermission: true,
       userAddress,
@@ -162,23 +157,28 @@ export async function POST(request: NextRequest) {
 
     const responseData = {
       success: true,
-      message: "Spend permission approved successfully",
-      transactionHash: approvalTxnHash,
+      message: "Spend permission approved with paymaster sponsorship",
+      transactionHash: txHash,
+      gasSponsored: true,
       permission: userPermissions[userAddress],
     };
 
+    console.log("Paymaster approval completed successfully");
+    
     return new Response(JSON.stringify(responseData, (key, value) =>
       typeof value === 'bigint' ? value.toString() : value
     ), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error("Error processing spend permission:", error);
+    console.error("Error processing paymaster approval:", error);
+    console.error("Error stack:", error instanceof Error ? error.stack : 'No stack available');
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to process spend permission",
-        message: error instanceof Error ? error.message : "Unknown error"
+        error: "Failed to process spend permission approval",
+        message: error instanceof Error ? error.message : "Unknown error",
+        details: error instanceof Error ? error.stack : undefined
       },
       { status: error instanceof SyntaxError ? 400 : 500 }
     );

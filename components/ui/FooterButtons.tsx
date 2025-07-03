@@ -25,7 +25,7 @@ export function FooterButtons({ onReset, displayName }: FooterButtonsProps) {
       className="flex flex-col gap-4 mt-4 mb-6 px-2 bg-black/50 backdrop-blur-sm py-4 border-t border-gray-800/30"
     >
       {/* Spend Permission Section */}
-      {showSpendPermission && (
+      {/* {showSpendPermission && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
@@ -37,27 +37,27 @@ export function FooterButtons({ onReset, displayName }: FooterButtonsProps) {
             onCollageGenerated={handleCollageGenerated}
           />
         </motion.div>
-      )}
+      )} */}
 
       {/* Button Row */}
       <div className="flex justify-center gap-3 flex-wrap">
         {/* Generate with Spend Permission Button */}
-        {!showSpendPermission && !collageGenerated && (
+        {/* {!showSpendPermission && !collageGenerated && (
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setShowSpendPermission(true)}
             className="relative group overflow-hidden rounded-xl bg-gradient-to-r from-purple-600/80 to-pink-600/80 hover:from-purple-600 hover:to-pink-600 text-white py-3 px-6 font-mono tracking-wider transition-all duration-300 text-sm md:text-base border border-purple-500/30"
           >
-            {/* Gradient hover effect */}
+
             <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-transparent to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             
-            {/* Button content */}
+            
             <span className="relative z-10 flex items-center gap-2">
               🚀 Generate with Spend Permission
             </span>
           </motion.button>
-        )}
+        )} */}
 
         {/* Success state after generation */}
         {collageGenerated && (
