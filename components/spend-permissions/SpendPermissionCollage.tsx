@@ -188,6 +188,7 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
       
       if (result.success) {
         setHasPermission(true);
+        setDebugInfo("Spend permission approved successfully!");
       } else {
         throw new Error(result.message || 'Failed to approve spend permission');
       }
