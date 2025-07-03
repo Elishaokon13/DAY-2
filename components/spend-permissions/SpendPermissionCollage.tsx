@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { useAccount, useConnect, useSignTypedData, useChainId } from "wagmi";
-import { Hex } from "viem";
+import { useQuery } from "@tanstack/react-query";
+import { Address, Hex } from "viem";
 import { Icon } from "@/components/ui/Icon";
 import { 
   spendPermissionManagerAddress, 
-  spendPermissionManagerAbi,
   USDC_ADDRESS,
   SPENDER_ADDRESS,
   SPEND_PERMISSION_CONFIG
@@ -19,139 +18,93 @@ interface SpendPermissionCollageProps {
   onCollageGenerated: () => void;
 }
 
-const COLLAGE_FEE = "0.05"; // 0.05 USDC per collage generation
-
 export function SpendPermissionCollage({ displayName, onCollageGenerated }: SpendPermissionCollageProps) {
-  const { context } = useMiniKit();
-  const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
-  const chainId = useChainId();
-  const { signTypedDataAsync } = useSignTypedData();
-  
-  const [loading, setLoading] = useState(false);
+  const [isDisabled, setIsDisabled] = useState(false);
+  const [signature, setSignature] = useState<Hex>();
+  const [spendPermission, setSpendPermission] = useState<object>();
   const [error, setError] = useState<string | null>(null);
-  const [hasPermission, setHasPermission] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationComplete, setGenerationComplete] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string>("");
 
-  const checkExistingPermission = useCallback(async () => {
-    if (!context?.user?.username) return;
-    
-    try {
-      const response = await fetch('/api/spend-permission/check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userAddress: context.user.username,
-        }),
-      });
-      
-      const data = await response.json();
-      setHasPermission(data.hasPermission);
-    } catch (err) {
-      console.error('Failed to check spend permission:', err);
-      setDebugInfo(`Error checking permission: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    }
-  }, [context?.user?.username]);
+  const { signTypedDataAsync } = useSignTypedData();
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const { connect, connectors } = useConnect();
+
+  const { data: collageData, refetch } = useQuery({
+    queryKey: ["generateCollage"],
+    queryFn: handleGenerateCollage,
+    refetchOnWindowFocus: false,
+    enabled: !!signature,
+  });
 
   useEffect(() => {
-    checkExistingPermission();
-    
     const debugEnv = () => {
       const info = [];
-      info.push(`FC User: ${context?.user?.username || 'none'}`);
       info.push(`Wallet: ${isConnected ? 'connected' : 'disconnected'}`);
       info.push(`Address: ${address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'none'}`);
       info.push(`Environment: ${typeof window !== 'undefined' ? window.navigator.userAgent.includes('Warpcast') ? 'Warpcast' : 'Browser' : 'SSR'}`);
       
-      // Add current network info
-      const networkName = chainId === 8453 ? 'Base' : chainId === 37111 ? 'Lens Testnet' : `Chain ${chainId}`;
+      const networkName = chainId === 8453 ? 'Base' : `Unsupported Chain ${chainId}`;
       info.push(`Network: ${networkName} (${chainId})`);
       
       setDebugInfo(info.join(' | '));
     };
     
     debugEnv();
-  }, [checkExistingPermission, context?.user?.username]);
+  }, [address, isConnected, chainId]);
 
-  const requestSpendPermission = async () => {
-    if (!context?.user?.username) {
-      setError("Please connect your Farcaster wallet first");
+  async function handleSubmit() {
+    setIsDisabled(true);
+    setError(null);
+    
+    let accountAddress = address;
+    if (!accountAddress) {
+      try {
+        await connect({
+          connector: connectors[0],
+        });
+        // Wait for connection to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        accountAddress = address;
+        if (!accountAddress) {
+          throw new Error("Failed to get account address after connection");
+        }
+      } catch (err) {
+        setError("Failed to connect wallet");
+        setIsDisabled(false);
+        return;
+      }
+    }
+
+    // Check if we're on the correct network (Base mainnet)
+    if (chainId !== 8453) {
+      setError(`Wrong network detected. Please switch to Base mainnet in your wallet. Current network: Chain ${chainId}`);
+      setIsDisabled(false);
       return;
     }
 
-    setLoading(true);
-    setError(null);
-    setDebugInfo("Starting Farcaster wallet connection...");
+    const currentTime = Math.floor(Date.now() / 1000);
+    const endTime = currentTime + Number(SPEND_PERMISSION_CONFIG.period);
+    const saltValue = Math.floor(Math.random() * 1000000);
+
+    const spendPermission = {
+      account: accountAddress as Address,
+      spender: SPENDER_ADDRESS,
+      token: USDC_ADDRESS,
+      allowance: SPEND_PERMISSION_CONFIG.allowance,
+      period: Number(SPEND_PERMISSION_CONFIG.period),
+      start: currentTime,
+      end: endTime,
+      salt: BigInt(saltValue),
+      extraData: "0x" as Hex,
+    };
 
     try {
-      // Check if wallet is connected
-      if (!isConnected || !address) {
-        setDebugInfo("Wallet not connected, attempting to connect...");
-        
-        if (connectors.length === 0) {
-          throw new Error("No wallet connectors available. Please ensure you're using Warpcast.");
-        }
-        
-        // Connect using the Farcaster Mini App connector
-        await connect({ connector: connectors[0] });
-        setDebugInfo("Wallet connection requested...");
-        
-        // Wait a moment for connection to complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        if (!isConnected || !address) {
-          throw new Error("Failed to connect to Farcaster wallet. Please try again.");
-        }
-      }
-      
-      const userAddress = address;
-      setDebugInfo(`Farcaster wallet connected: ${userAddress.slice(0, 10)}...`);
-
-      // Generate consistent values for both objects
-      const currentTime = Math.floor(Date.now() / 1000);
-      const endTime = currentTime + 86400 * 365;
-      const saltValue = Math.floor(Math.random() * 1000000);
-
-      // Create the spend permission object for the API (with strings)
-      const spendPermissionForApi = {
-        account: userAddress,
-        spender: SPENDER_ADDRESS,
-        token: USDC_ADDRESS,
-        allowance: SPEND_PERMISSION_CONFIG.allowance.toString(),
-        period: SPEND_PERMISSION_CONFIG.period.toString(),
-        start: currentTime.toString(),
-        end: endTime.toString(),
-        salt: saltValue.toString(),
-        extraData: "0x" as Hex,
-      };
-
-      // Create the spend permission object for signing (with proper types)
-      const spendPermissionForSigning = {
-        account: userAddress as `0x${string}`,
-        spender: SPENDER_ADDRESS,
-        token: USDC_ADDRESS,
-        allowance: SPEND_PERMISSION_CONFIG.allowance,
-        period: Number(SPEND_PERMISSION_CONFIG.period),
-        start: currentTime,
-        end: endTime,
-        salt: BigInt(saltValue),
-        extraData: "0x" as `0x${string}`,
-      };
-
-      // Check if we're on the correct network (Base mainnet)
-      if (chainId !== 8453) {
-        throw new Error(`Wrong network detected. Please switch to Base mainnet in your wallet. Current network: ${chainId === 37111 ? 'Lens Testnet' : `Chain ${chainId}`}`);
-      }
-
-      setDebugInfo("Requesting signature from Farcaster wallet...");
-      
       const signature = await signTypedDataAsync({
         domain: {
           name: "Spend Permission Manager",
           version: "1",
-          chainId: 8453,
+          chainId: chainId,
           verifyingContract: spendPermissionManagerAddress,
         },
         types: {
@@ -168,90 +121,84 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
           ],
         },
         primaryType: "SpendPermission",
-        message: spendPermissionForSigning,
+        message: spendPermission,
       });
       
-      setDebugInfo("Signature obtained, validating with backend...");
-      
-      const response = await fetch('/api/spend-permission/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          spendPermission: spendPermissionForApi,
-          signature,
-          userAddress,
-          farcasterUsername: context.user.username,
-        }),
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        setHasPermission(true);
-        setDebugInfo("Spend permission signature validated successfully!");
-      } else {
-        throw new Error(result.message || 'Failed to validate spend permission');
-      }
-    } catch (err: any) {
-      console.error('Farcaster wallet connection failed:', err);
-      let errorMessage = 'Failed to setup spend permission';
-      
-      if (err.message?.includes('No wallet connectors available')) {
-        errorMessage = 'Farcaster wallet not available. Please ensure you are using Warpcast with wallet enabled.';
-      } else if (err.message?.includes('User rejected')) {
-        errorMessage = 'Wallet connection was rejected. Please try again and approve the connection.';
-      } else if (err.message?.includes('Wrong network detected')) {
-        errorMessage = err.message; // Use the specific network error message
-      } else if (err.message?.includes('Failed to connect to Farcaster wallet')) {
-        errorMessage = 'Failed to connect to Farcaster wallet. Please check your wallet settings and try again.';
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      
-      setError(errorMessage);
-      setDebugInfo(`Error: ${err.message || 'Unknown error'}`);
-    } finally {
-      setLoading(false);
+      setSpendPermission(spendPermission);
+      setSignature(signature);
+    } catch (e) {
+      console.error(e);
+      setError(e instanceof Error ? e.message : "Failed to sign spend permission");
     }
-  };
+    setIsDisabled(false);
+  }
 
-  const generateCollage = async () => {
-    if (!hasPermission) {
-      setError("Please setup spend permission first");
-      return;
-    }
-
-    setIsGenerating(true);
-    setError(null);
-
+  async function handleGenerateCollage() {
+    setIsDisabled(true);
+    let data;
+    
     try {
-      const response = await fetch('/api/collage/generate', {
+      const replacer = (key: string, value: any) => {
+        if (typeof value === "bigint") {
+          return value.toString();
+        }
+        return value;
+      };
+      
+      const response = await fetch("/api/spend-permission/approve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(
+          {
+            spendPermission,
+            signature,
+            userAddress: address,
+            farcasterUsername: displayName,
+          },
+          replacer
+        ),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      
+      const approveResult = await response.json();
+      if (!approveResult.success) {
+        throw new Error(approveResult.message || "Failed to approve spend permission");
+      }
+
+      // Now generate the collage
+      const collageResponse = await fetch('/api/collage/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           displayName,
-          farcasterUsername: context?.user?.username,
-          fee: COLLAGE_FEE,
+          farcasterUsername: displayName,
+          fee: "0.05",
         }),
       });
 
-      const result = await response.json();
-      
-      if (result.success) {
-        setGenerationComplete(true);
-        onCollageGenerated();
-      } else {
-        throw new Error(result.message || 'Failed to generate collage');
+      const collageResult = await collageResponse.json();
+      if (!collageResult.success) {
+        throw new Error(collageResult.message || "Failed to generate collage");
       }
-    } catch (err) {
-      console.error('Collage generation failed:', err);
-      setError(err instanceof Error ? err.message : 'Failed to generate collage');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
-  if (generationComplete) {
+      data = collageResult;
+      onCollageGenerated();
+    } catch (e) {
+      console.error(e);
+      setError(e instanceof Error ? e.message : "Failed to generate collage");
+    }
+    
+    setIsDisabled(false);
+    return data;
+  }
+
+  // Show success state if collage was generated
+  if (collageData?.success) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -319,7 +266,8 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
     );
   }
 
-  if (!hasPermission) {
+  // Show spend permission setup if no signature
+  if (!signature) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -361,11 +309,11 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
         </div>
 
         <button
-          onClick={requestSpendPermission}
-          disabled={loading}
+          onClick={handleSubmit}
+          disabled={isDisabled}
           className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-mono tracking-wider py-3 rounded-xl transition-all duration-300 disabled:opacity-50"
         >
-          {loading ? (
+          {isDisabled ? (
             <span className="flex items-center justify-center">
               <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -395,6 +343,7 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
     );
   }
 
+  // Show collage generation UI if signature exists
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -417,11 +366,11 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
       </div>
 
       <button
-        onClick={generateCollage}
-        disabled={isGenerating}
+        onClick={() => refetch()}
+        disabled={isDisabled}
         className="w-full bg-gradient-to-r from-lime-600 to-emerald-600 hover:from-lime-700 hover:to-emerald-700 text-white font-mono tracking-wider py-3 rounded-xl transition-all duration-300 disabled:opacity-50"
       >
-        {isGenerating ? (
+        {isDisabled ? (
           <span className="flex items-center justify-center">
             <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
