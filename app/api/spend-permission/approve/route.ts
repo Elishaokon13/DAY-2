@@ -115,26 +115,27 @@ export async function POST(request: NextRequest) {
     }, null, 2));
     console.log("Signature:", signature);
 
-    // Validate the signature by simulating the transaction from the user's account
-    console.log("Validating signature by simulating transaction from user account...");
+    // Validate the signature by simulating the transaction from the spender's account
+    console.log('Validating signature by simulating transaction from spender account...');
     try {
+      const spenderWalletClient = getSpenderWalletClient();
       const { request: txRequest } = await publicClient.simulateContract({
         address: spendPermissionManagerAddress,
         abi: spendPermissionManagerAbi,
-        functionName: "approveWithSignature",
+        functionName: 'approveWithSignature',
         args: [processedSpendPermission, signature as `0x${string}`],
-        account: userAddress as `0x${string}`,
+        account: spenderWalletClient.account.address,
       });
       
-      console.log("Signature validation successful - transaction would succeed if executed by user");
+      console.log('Signature validation successful - transaction would succeed if executed by spender');
     } catch (simulationError) {
-      console.error("Signature validation failed:", simulationError);
+      console.error('Signature validation failed:', simulationError);
       throw new Error(`Invalid signature: ${simulationError instanceof Error ? simulationError.message : 'Unknown error'}`);
     }
 
     // Note: In a production app, the user would need to execute this transaction themselves
     // or you would need to implement a different flow (like using a relayer service)
-    console.log("Signature validated successfully - permission would be approved if user executes the transaction");
+    console.log('Signature validated successfully - permission would be approved if user executes the transaction');
 
     // Store the permission with stringified BigInt values (for demo purposes)
     userPermissions[userAddress] = {
