@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { 
+  spendPermissionManagerAddress, 
+  spendPermissionManagerAbi,
+  USDC_ADDRESS,
+  SPEND_PERMISSION_CONFIG
+} from "@/lib/spend-permission-constants";
 
 // In-memory storage for demo (use database in production)
 const userPermissions: Record<string, {
@@ -15,6 +21,14 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { spendPermission, signature, userAddress, farcasterUsername } = body;
+    
+    // Convert string values back to BigInt for processing
+    if (spendPermission.salt && typeof spendPermission.salt === 'string') {
+      spendPermission.salt = BigInt(spendPermission.salt);
+    }
+    if (spendPermission.allowance && typeof spendPermission.allowance === 'string') {
+      spendPermission.allowance = BigInt(spendPermission.allowance);
+    }
 
     if (!spendPermission || !signature || !userAddress || !farcasterUsername) {
       return NextResponse.json(
@@ -50,11 +64,17 @@ export async function POST(request: NextRequest) {
     // Mock transaction hash
     const mockTxHash = `0x${Math.random().toString(16).slice(2)}${Math.random().toString(16).slice(2)}`;
 
-    return NextResponse.json({
+    const responseData = {
       success: true,
       message: "Spend permission approved successfully",
       transactionHash: mockTxHash,
       permission: userPermissions[userAddress],
+    };
+    
+    return new Response(JSON.stringify(responseData, (key, value) => 
+      typeof value === 'bigint' ? value.toString() : value
+    ), {
+      headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error("Error approving spend permission:", error);

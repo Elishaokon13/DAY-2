@@ -5,15 +5,18 @@ import { motion } from "framer-motion";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { parseUnits, Address, Hex } from "viem";
 import { Icon } from "@/components/ui/Icon";
+import { 
+  spendPermissionManagerAddress, 
+  USDC_ADDRESS,
+  SPENDER_ADDRESS,
+  SPEND_PERMISSION_CONFIG
+} from "@/lib/spend-permission-constants";
 
 interface SpendPermissionCollageProps {
   displayName: string;
   onCollageGenerated: () => void;
 }
 
-// USDC Contract on Base
-const USDC_CONTRACT = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as Address;
-const SPENDER_ADDRESS = process.env.NEXT_PUBLIC_SPENDER_ADDRESS as Address;
 const COLLAGE_FEE = "0.05"; // 0.05 USDC per collage generation
 
 export function SpendPermissionCollage({ displayName, onCollageGenerated }: SpendPermissionCollageProps) {
@@ -23,6 +26,7 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
   const [hasPermission, setHasPermission] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationComplete, setGenerationComplete] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string>("");
 
   const checkExistingPermission = useCallback(async () => {
     if (!context?.user?.username) return;
@@ -46,7 +50,18 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
   // Check if user has existing spend permission
   useEffect(() => {
     checkExistingPermission();
-  }, [checkExistingPermission]);
+    
+    // Debug MiniKit environment
+    const debugEnv = () => {
+      const info = [];
+      info.push(`User: ${context?.user?.username || 'none'}`);
+      info.push(`Window.ethereum: ${typeof window !== 'undefined' && window.ethereum ? 'available' : 'not available'}`);
+      info.push(`User agent: ${typeof window !== 'undefined' ? window.navigator.userAgent.includes('Warpcast') ? 'Warpcast' : 'Other' : 'SSR'}`);
+      setDebugInfo(info.join(' | '));
+    };
+    
+    debugEnv();
+  }, [checkExistingPermission, context?.user?.username]);
 
   const requestSpendPermission = async () => {
     if (!context?.user?.username) {
@@ -56,26 +71,49 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
 
     setLoading(true);
     setError(null);
+    setDebugInfo("Starting wallet connection...");
 
     try {
-      // Check for wallet provider
-      if (!window.ethereum) {
-        throw new Error("Wallet not found. Please use Warpcast.");
+      // For MiniKit in Farcaster, we need to request wallet connection
+      // MiniKit provides wallet functionality through the embedded wallet
+      let userAddress: string | undefined;
+      
+      setDebugInfo("Checking for wallet provider...");
+      
+      // Check if we're in a MiniKit environment (Farcaster)
+      if (typeof window !== 'undefined' && window.ethereum) {
+        setDebugInfo("Wallet provider found, requesting accounts...");
+        try {
+          // Request wallet connection through MiniKit
+          const accounts = await window.ethereum.request({
+            method: "eth_requestAccounts",
+          });
+          userAddress = accounts?.[0];
+          setDebugInfo(`Wallet connected: ${userAddress?.slice(0, 10)}...`);
+        } catch (walletError) {
+          console.warn("Wallet connection failed:", walletError);
+          setDebugInfo("Wallet connection failed, using demo mode");
+          // For demo purposes, we'll use the Farcaster username as identifier
+          // In production, you'd need proper wallet integration
+          userAddress = `demo_${context.user.username}`;
+        }
+      } else {
+        setDebugInfo("No wallet provider found, using demo mode");
+        // Fallback for development/testing
+        userAddress = `demo_${context.user.username}`;
       }
-
-      // Get connected accounts
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      });
-      const userAddress = accounts[0];
+      
+      if (!userAddress) {
+        throw new Error("Unable to connect wallet. Please ensure you're using Warpcast with wallet enabled.");
+      }
 
       // Create spend permission object
       const spendPermission = {
         account: userAddress,
         spender: SPENDER_ADDRESS,
-        token: USDC_CONTRACT,
-        allowance: parseUnits("10", 6), // Allow up to 10 USDC (200 collages)
-        period: 86400 * 30, // 30 days
+        token: USDC_ADDRESS,
+        allowance: SPEND_PERMISSION_CONFIG.allowance,
+        period: SPEND_PERMISSION_CONFIG.period,
         start: Math.floor(Date.now() / 1000),
         end: Math.floor(Date.now() / 1000) + (86400 * 365), // 1 year
         salt: BigInt(Math.floor(Math.random() * 1000000)),
@@ -83,35 +121,44 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
       };
 
       // Request signature from user
-      const signature = await window.ethereum.request({
-        method: "eth_signTypedData_v4",
-        params: [
-          userAddress,
-          JSON.stringify({
-            domain: {
-              name: "Spend Permission Manager",
-              version: "1",
-              chainId: 8453, // Base mainnet
-              verifyingContract: process.env.NEXT_PUBLIC_SPEND_PERMISSION_MANAGER,
-            },
-            types: {
-              SpendPermission: [
-                { name: "account", type: "address" },
-                { name: "spender", type: "address" },
-                { name: "token", type: "address" },
-                { name: "allowance", type: "uint160" },
-                { name: "period", type: "uint48" },
-                { name: "start", type: "uint48" },
-                { name: "end", type: "uint48" },
-                { name: "salt", type: "uint256" },
-                { name: "extraData", type: "bytes" },
-              ],
-            },
-            primaryType: "SpendPermission",
-            message: spendPermission,
-          }),
-        ],
-      });
+      let signature: string;
+      
+      if (userAddress.startsWith('demo_')) {
+        // Demo mode - simulate signature
+        signature = `0x${'0'.repeat(130)}`; // Mock signature for demo
+        console.log("Demo mode: Using mock signature");
+      } else {
+        // Real wallet signature
+        signature = await window.ethereum.request({
+          method: "eth_signTypedData_v4",
+          params: [
+            userAddress,
+            JSON.stringify({
+              domain: {
+                name: "Spend Permission Manager",
+                version: "1",
+                chainId: 8453, // Base mainnet
+                verifyingContract: spendPermissionManagerAddress,
+              },
+              types: {
+                SpendPermission: [
+                  { name: "account", type: "address" },
+                  { name: "spender", type: "address" },
+                  { name: "token", type: "address" },
+                  { name: "allowance", type: "uint160" },
+                  { name: "period", type: "uint48" },
+                  { name: "start", type: "uint48" },
+                  { name: "end", type: "uint48" },
+                  { name: "salt", type: "uint256" },
+                  { name: "extraData", type: "bytes" },
+                ],
+              },
+              primaryType: "SpendPermission",
+              message: spendPermission,
+            }),
+          ],
+        });
+      }
 
       // Submit to backend for approval (with paymaster)
       const response = await fetch('/api/spend-permission/approve', {
@@ -269,6 +316,12 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
 
         {error && (
           <p className="text-red-400 text-sm mt-3 text-center">{error}</p>
+        )}
+
+        {debugInfo && (
+          <p className="text-blue-400 text-xs mt-2 text-center font-mono">
+            DEBUG: {debugInfo}
+          </p>
         )}
 
         <p className="text-xs text-gray-500 mt-3 text-center">
