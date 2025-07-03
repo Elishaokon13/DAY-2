@@ -8,6 +8,7 @@ import { Hex } from "viem";
 import { Icon } from "@/components/ui/Icon";
 import { 
   spendPermissionManagerAddress, 
+  spendPermissionManagerAbi,
   USDC_ADDRESS,
   SPENDER_ADDRESS,
   SPEND_PERMISSION_CONFIG
@@ -170,7 +171,7 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
         message: spendPermissionForSigning,
       });
       
-      setDebugInfo("Signature obtained, submitting to backend...");
+      setDebugInfo("Signature obtained, validating with backend...");
       
       const response = await fetch('/api/spend-permission/approve', {
         method: 'POST',
@@ -187,9 +188,9 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
       
       if (result.success) {
         setHasPermission(true);
-        setDebugInfo("Spend permission approved successfully!");
+        setDebugInfo("Spend permission signature validated successfully!");
       } else {
-        throw new Error(result.message || 'Failed to approve spend permission');
+        throw new Error(result.message || 'Failed to validate spend permission');
       }
     } catch (err: any) {
       console.error('Farcaster wallet connection failed:', err);
