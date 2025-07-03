@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
-import { parseUnits, Address, Hex } from "viem";
+import { Address, Hex } from "viem";
 import { Icon } from "@/components/ui/Icon";
 import { 
   spendPermissionManagerAddress, 
@@ -36,7 +36,7 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userAddress: context.user.username, // Using Farcaster username as identifier
+          userAddress: context.user.username,
         }),
       });
       
@@ -44,14 +44,13 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
       setHasPermission(data.hasPermission);
     } catch (err) {
       console.error('Failed to check spend permission:', err);
+      setDebugInfo(`Error checking permission: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   }, [context?.user?.username]);
 
-  // Check if user has existing spend permission
   useEffect(() => {
     checkExistingPermission();
     
-    // Debug Farcaster MiniKit environment
     const debugEnv = () => {
       const info = [];
       info.push(`FC User: ${context?.user?.username || 'none'}`);
@@ -78,57 +77,41 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
       
       setDebugInfo("Checking MiniKit environment...");
       
-      // First, check if we're in a Farcaster MiniKit environment
-      if (typeof window !== 'undefined') {
-        // Check for MiniKit specific wallet provider
-        const provider = window.ethereum;
+      if (typeof window !== 'undefined' && window.ethereum) {
+        setDebugInfo("MiniKit wallet provider detected, connecting...");
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts",
+        }) as string[];
         
-        if (provider) {
-          setDebugInfo("MiniKit wallet provider detected, connecting...");
-          try {
-            // Request wallet connection through Farcaster's embedded wallet
-            const accounts = await provider.request({
-              method: "eth_requestAccounts",
-            }) as string[];
-            
-            if (accounts && accounts.length > 0) {
-              userAddress = accounts[0];
-              setDebugInfo(`Farcaster wallet connected: ${userAddress.slice(0, 10)}...`);
-            } else {
-              throw new Error("No accounts returned from Farcaster wallet");
-            }
-          } catch (walletError: any) {
-            console.error("Farcaster wallet connection failed:", walletError);
-            throw new Error(`Farcaster wallet connection failed: ${walletError.message || 'Unknown error'}`);
-          }
+        if (accounts && accounts.length > 0) {
+          userAddress = accounts[0];
+          setDebugInfo(`Farcaster wallet connected: ${userAddress.slice(0, 10)}...`);
         } else {
-          throw new Error("Farcaster wallet provider not found. Please ensure you're using Warpcast with wallet enabled.");
+          throw new Error("No accounts returned from Farcaster wallet");
         }
       } else {
-        throw new Error("Window object not available. Please ensure you're running in a browser environment.");
+        throw new Error("Farcaster wallet provider not found. Please ensure you're using Warpcast with wallet enabled.");
       }
       
       if (!userAddress) {
         throw new Error("Failed to get wallet address from Farcaster. Please try again.");
       }
 
-      // Create spend permission object
       const spendPermission = {
         account: userAddress,
         spender: SPENDER_ADDRESS,
         token: USDC_ADDRESS,
-        allowance: SPEND_PERMISSION_CONFIG.allowance,
-        period: SPEND_PERMISSION_CONFIG.period,
-        start: Math.floor(Date.now() / 1000),
-        end: Math.floor(Date.now() / 1000) + (86400 * 365), // 1 year
-        salt: BigInt(Math.floor(Math.random() * 1000000)),
+        allowance: SPEND_PERMISSION_CONFIG.allowance.toString(),
+        period: SPEND_PERMISSION_CONFIG.period.toString(),
+        start: Math.floor(Date.now() / 1000).toString(),
+        end: (Math.floor(Date.now() / 1000) + 86400 * 365).toString(),
+        salt: Math.floor(Math.random() * 1000000).toString(),
         extraData: "0x" as Hex,
       };
 
-      // Request signature from user using Farcaster wallet
       setDebugInfo("Requesting signature from Farcaster wallet...");
       
-      const signature = await window.ethereum!.request({
+      const signature = await window.ethereum.request({
         method: "eth_signTypedData_v4",
         params: [
           userAddress,
@@ -136,7 +119,7 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
             domain: {
               name: "Spend Permission Manager",
               version: "1",
-              chainId: 8453, // Base mainnet
+              chainId: 8453,
               verifyingContract: spendPermissionManagerAddress,
             },
             types: {
@@ -159,25 +142,12 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
       }) as string;
       
       setDebugInfo("Signature obtained, submitting to backend...");
-
-      // Submit to backend for approval (with paymaster)
-      setDebugInfo("Submitting spend permission to backend...");
-      
-      // Convert BigInt values to strings for JSON serialization
-      const serializedSpendPermission = {
-        ...spendPermission,
-        allowance: spendPermission.allowance.toString(),
-        period: spendPermission.period.toString(),
-        start: spendPermission.start.toString(),
-        end: spendPermission.end.toString(),
-        salt: spendPermission.salt.toString(),
-      };
       
       const response = await fetch('/api/spend-permission/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          spendPermission: serializedSpendPermission,
+          spendPermission,
           signature,
           userAddress,
           farcasterUsername: context.user.username,
@@ -194,8 +164,6 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
       }
     } catch (err: any) {
       console.error('Farcaster wallet connection failed:', err);
-      
-      // Provide specific error messages for common Farcaster wallet issues
       let errorMessage = 'Failed to setup spend permission';
       
       if (err.message?.includes('wallet provider not found')) {
@@ -225,7 +193,6 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
     setError(null);
 
     try {
-      // Generate collage and charge 0.05 USDC
       const response = await fetch('/api/collage/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -303,7 +270,7 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
         </div>
 
         <div className="mb-6">
-          <h4 className="text-white font-mono mb-3">What you&apos;re authorizing:</h4>
+          <h4 className="text-white font-mono mb-3">What you're authorizing:</h4>
           <ul className="space-y-2 text-sm text-gray-300">
             <li className="flex items-center gap-2">
               <Icon name="check" size="sm" className="text-purple-400" />
@@ -403,4 +370,4 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
       )}
     </motion.div>
   );
-} 
+}
