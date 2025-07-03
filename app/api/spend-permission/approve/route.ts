@@ -115,27 +115,35 @@ export async function POST(request: NextRequest) {
     }, null, 2));
     console.log("Signature:", signature);
 
-    // Validate the signature by simulating the transaction from the spender's account
-    console.log('Validating signature by simulating transaction from spender account...');
+    // Execute the approveWithSignature transaction
+    console.log('Executing approveWithSignature transaction...');
+    let approvalTxnHash: `0x${string}`;
     try {
       const spenderWalletClient = getSpenderWalletClient();
-      const { request: txRequest } = await publicClient.simulateContract({
+      approvalTxnHash = await spenderWalletClient.writeContract({
         address: spendPermissionManagerAddress,
         abi: spendPermissionManagerAbi,
         functionName: 'approveWithSignature',
         args: [processedSpendPermission, signature as `0x${string}`],
-        account: spenderWalletClient.account.address,
       });
       
-      console.log('Signature validation successful - transaction would succeed if executed by spender');
-    } catch (simulationError) {
-      console.error('Signature validation failed:', simulationError);
-      throw new Error(`Invalid signature: ${simulationError instanceof Error ? simulationError.message : 'Unknown error'}`);
+      console.log('Approval transaction hash:', approvalTxnHash);
+      
+      // Wait for transaction confirmation
+      const approvalReceipt = await publicClient.waitForTransactionReceipt({
+        hash: approvalTxnHash,
+      });
+      
+      console.log('Approval transaction confirmed:', approvalReceipt.status);
+      
+      if (approvalReceipt.status !== 'success') {
+        throw new Error('Transaction failed');
+      }
+      
+    } catch (executionError) {
+      console.error('Transaction execution failed:', executionError);
+      throw new Error(`Transaction failed: ${executionError instanceof Error ? executionError.message : 'Unknown error'}`);
     }
-
-    // Note: In a production app, the user would need to execute this transaction themselves
-    // or you would need to implement a different flow (like using a relayer service)
-    console.log('Signature validated successfully - permission would be approved if user executes the transaction');
 
     // Store the permission with stringified BigInt values (for demo purposes)
     userPermissions[userAddress] = {
@@ -154,8 +162,8 @@ export async function POST(request: NextRequest) {
 
     const responseData = {
       success: true,
-      message: "Spend permission signature validated successfully",
-      signatureValid: true,
+      message: "Spend permission approved successfully",
+      transactionHash: approvalTxnHash,
       permission: userPermissions[userAddress],
     };
 
