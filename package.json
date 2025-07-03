@@ -17,8 +17,9 @@
   "dependencies": {
     "@coinbase/onchainkit": "^0.38.15",
     "@farcaster/frame-sdk": "^0.0.36",
+    "@farcaster/miniapp-wagmi-connector": "^1.0.0",
     "@radix-ui/react-slot": "^1.2.0",
-    "@tanstack/react-query": "^5",
+    "@tanstack/react-query": "^5.81.5",
     "@vercel/blob": "^1.0.0",
     "@vercel/og": "^0.6.8",
     "@zoralabs/coins-sdk": "^0.1.0",
@@ -38,7 +39,7 @@
     "tailwind-merge": "^3.2.0",
     "tailwindcss-animate": "^1.0.7",
     "viem": "^2.31.6",
-    "wagmi": "^2.11.0"
+    "wagmi": "^2.15.6"
   },
   "devDependencies": {
     "@types/node": "^20",

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
+import { useAccount, useConnect, useSignTypedData, useChainId } from "wagmi";
 import { Hex } from "viem";
 import { Icon } from "@/components/ui/Icon";
 import { 
@@ -21,6 +22,11 @@ const COLLAGE_FEE = "0.05"; // 0.05 USDC per collage generation
 
 export function SpendPermissionCollage({ displayName, onCollageGenerated }: SpendPermissionCollageProps) {
   const { context } = useMiniKit();
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const chainId = useChainId();
+  const { signTypedDataAsync } = useSignTypedData();
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState(false);
@@ -54,8 +60,14 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
     const debugEnv = () => {
       const info = [];
       info.push(`FC User: ${context?.user?.username || 'none'}`);
-      info.push(`Wallet Provider: ${typeof window !== 'undefined' && window.ethereum ? 'detected' : 'missing'}`);
+      info.push(`Wallet: ${isConnected ? 'connected' : 'disconnected'}`);
+      info.push(`Address: ${address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'none'}`);
       info.push(`Environment: ${typeof window !== 'undefined' ? window.navigator.userAgent.includes('Warpcast') ? 'Warpcast' : 'Browser' : 'SSR'}`);
+      
+      // Add current network info
+      const networkName = chainId === 8453 ? 'Base' : chainId === 37111 ? 'Lens Testnet' : `Chain ${chainId}`;
+      info.push(`Network: ${networkName} (${chainId})`);
+      
       setDebugInfo(info.join(' | '));
     };
     
@@ -73,31 +85,31 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
     setDebugInfo("Starting Farcaster wallet connection...");
 
     try {
-      let userAddress: string | undefined;
-      
-      setDebugInfo("Checking MiniKit environment...");
-      
-      if (typeof window !== 'undefined' && window.ethereum) {
-        setDebugInfo("MiniKit wallet provider detected, connecting...");
-        const accounts = await window.ethereum.request({
-          method: "eth_requestAccounts",
-        }) as string[];
+      // Check if wallet is connected
+      if (!isConnected || !address) {
+        setDebugInfo("Wallet not connected, attempting to connect...");
         
-        if (accounts && accounts.length > 0) {
-          userAddress = accounts[0];
-          setDebugInfo(`Farcaster wallet connected: ${userAddress.slice(0, 10)}...`);
-        } else {
-          throw new Error("No accounts returned from Farcaster wallet");
+        if (connectors.length === 0) {
+          throw new Error("No wallet connectors available. Please ensure you're using Warpcast.");
         }
-      } else {
-        throw new Error("Farcaster wallet provider not found. Please ensure you're using Warpcast with wallet enabled.");
+        
+        // Connect using the Farcaster Mini App connector
+        await connect({ connector: connectors[0] });
+        setDebugInfo("Wallet connection requested...");
+        
+        // Wait a moment for connection to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        if (!isConnected || !address) {
+          throw new Error("Failed to connect to Farcaster wallet. Please try again.");
+        }
       }
       
-      if (!userAddress) {
-        throw new Error("Failed to get wallet address from Farcaster. Please try again.");
-      }
+      const userAddress = address;
+      setDebugInfo(`Farcaster wallet connected: ${userAddress.slice(0, 10)}...`);
 
-      const spendPermission = {
+      // Create the spend permission object for the API (with strings)
+      const spendPermissionForApi = {
         account: userAddress,
         spender: SPENDER_ADDRESS,
         token: USDC_ADDRESS,
@@ -109,37 +121,49 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
         extraData: "0x" as Hex,
       };
 
+      // Create the spend permission object for signing (with proper types)
+      const spendPermissionForSigning = {
+        account: userAddress as `0x${string}`,
+        spender: SPENDER_ADDRESS,
+        token: USDC_ADDRESS,
+        allowance: SPEND_PERMISSION_CONFIG.allowance,
+        period: Number(SPEND_PERMISSION_CONFIG.period),
+        start: Math.floor(Date.now() / 1000),
+        end: Math.floor(Date.now() / 1000) + 86400 * 365,
+        salt: BigInt(Math.floor(Math.random() * 1000000)),
+        extraData: "0x" as `0x${string}`,
+      };
+
+      // Check if we're on the correct network (Base mainnet)
+      if (chainId !== 8453) {
+        throw new Error(`Wrong network detected. Please switch to Base mainnet in your wallet. Current network: ${chainId === 37111 ? 'Lens Testnet' : `Chain ${chainId}`}`);
+      }
+
       setDebugInfo("Requesting signature from Farcaster wallet...");
       
-      const signature = await window.ethereum.request({
-        method: "eth_signTypedData_v4",
-        params: [
-          userAddress,
-          JSON.stringify({
-            domain: {
-              name: "Spend Permission Manager",
-              version: "1",
-              chainId: 8453,
-              verifyingContract: spendPermissionManagerAddress,
-            },
-            types: {
-              SpendPermission: [
-                { name: "account", type: "address" },
-                { name: "spender", type: "address" },
-                { name: "token", type: "address" },
-                { name: "allowance", type: "uint160" },
-                { name: "period", type: "uint48" },
-                { name: "start", type: "uint48" },
-                { name: "end", type: "uint48" },
-                { name: "salt", type: "uint256" },
-                { name: "extraData", type: "bytes" },
-              ],
-            },
-            primaryType: "SpendPermission",
-            message: spendPermission,
-          }),
-        ],
-      }) as string;
+      const signature = await signTypedDataAsync({
+        domain: {
+          name: "Spend Permission Manager",
+          version: "1",
+          chainId: 8453,
+          verifyingContract: spendPermissionManagerAddress,
+        },
+        types: {
+          SpendPermission: [
+            { name: "account", type: "address" },
+            { name: "spender", type: "address" },
+            { name: "token", type: "address" },
+            { name: "allowance", type: "uint160" },
+            { name: "period", type: "uint48" },
+            { name: "start", type: "uint48" },
+            { name: "end", type: "uint48" },
+            { name: "salt", type: "uint256" },
+            { name: "extraData", type: "bytes" },
+          ],
+        },
+        primaryType: "SpendPermission",
+        message: spendPermissionForSigning,
+      });
       
       setDebugInfo("Signature obtained, submitting to backend...");
       
@@ -147,7 +171,7 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          spendPermission,
+          spendPermission: spendPermissionForApi,
           signature,
           userAddress,
           farcasterUsername: context.user.username,
@@ -166,11 +190,13 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
       console.error('Farcaster wallet connection failed:', err);
       let errorMessage = 'Failed to setup spend permission';
       
-      if (err.message?.includes('wallet provider not found')) {
-        errorMessage = 'Farcaster wallet not detected. Please ensure you are using Warpcast with wallet enabled.';
+      if (err.message?.includes('No wallet connectors available')) {
+        errorMessage = 'Farcaster wallet not available. Please ensure you are using Warpcast with wallet enabled.';
       } else if (err.message?.includes('User rejected')) {
         errorMessage = 'Wallet connection was rejected. Please try again and approve the connection.';
-      } else if (err.message?.includes('connection failed')) {
+      } else if (err.message?.includes('Wrong network detected')) {
+        errorMessage = err.message; // Use the specific network error message
+      } else if (err.message?.includes('Failed to connect to Farcaster wallet')) {
         errorMessage = 'Failed to connect to Farcaster wallet. Please check your wallet settings and try again.';
       } else if (err.message) {
         errorMessage = err.message;
@@ -246,6 +272,43 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
             🎉 Want to cast this as premium art? Pay $1 USDC to share on Farcaster!
           </p>
         </div>
+      </motion.div>
+    );
+  }
+
+  // Show wallet connection UI if not connected
+  if (!isConnected) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-[#1a1e2e]/80 p-6 rounded-xl border border-gray-800/50 backdrop-blur-sm"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-mono text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+              Connect Farcaster Wallet
+            </h3>
+            <p className="text-gray-400 text-sm">
+              Connect your wallet to enable spend permissions
+            </p>
+          </div>
+          <div className="text-2xl">🔗</div>
+        </div>
+
+        <button
+          onClick={() => connect({ connector: connectors[0] })}
+          disabled={connectors.length === 0}
+          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-mono tracking-wider py-3 rounded-xl transition-all duration-300 disabled:opacity-50"
+        >
+          {connectors.length === 0 ? "No Wallet Available" : "Connect Wallet"}
+        </button>
+
+        {debugInfo && (
+          <p className="text-blue-400 text-xs mt-2 text-center font-mono">
+            DEBUG: {debugInfo}
+          </p>
+        )}
       </motion.div>
     );
   }

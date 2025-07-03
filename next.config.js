@@ -9,10 +9,21 @@ const nextConfig = {
     // Disable ESLint during production build
     ignoreDuringBuilds: true,
   },
-  // Silence warnings for WalletConnect
+  // Silence warnings for WalletConnect and fix Wagmi worker issues
   // https://github.com/WalletConnect/walletconnect-monorepo/issues/1908
   webpack: (config) => {
     config.externals.push("pino-pretty", "lokijs", "encoding");
+    
+    // Resolve fallbacks for Node.js modules
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
+    };
+    
+    // Keep optimization enabled for production builds
+    
     return config;
   },
   images: {

@@ -289,4 +289,96 @@ A new feature has been added to enable premium content, allowing creators to rec
 - Always ask before using the -force git command
 - When working with blockchain transactions, use the correct contract addresses for the target network
 - When implementing wallet integrations, check the specific wallet's documentation for the proper connection method
-- For Warpcast wallet integration, we need to use MiniKit's context for user authentication and carefully check for the wallet environment 
+- For Warpcast wallet integration, we need to use MiniKit's context for user authentication and carefully check for the wallet environment
+- **BigInt Serialization Issue Resolution**: When working with BigInt values in JavaScript/TypeScript, they cannot be directly serialized with JSON.stringify(). The solution is to:
+  1. Convert BigInt values to strings before creating the object for serialization
+  2. Remove unnecessary BigInt serializer functions from JSON.stringify() calls
+  3. Ensure the backend properly converts string values back to BigInt/numbers when needed
+  4. Avoid creating BigInt values in the first place if they can be handled as strings or numbers
+
+## Current Status / Progress Tracking
+
+### Latest Issue Resolution: Network ChainId Mismatch + Proper Wagmi Integration
+**Status**: ✅ RESOLVED
+
+**Problem**: 
+- User was getting error "Provided chainId '8453' must match the active chainId '37111'"
+- The app was configured for Base mainnet (8453) but wallet was connected to Lens Testnet (37111)
+- The implementation was using direct `window.ethereum` access instead of proper Farcaster Mini App integration
+
+**Root Cause Analysis**:
+1. **Network Mismatch**: App expected Base mainnet but wallet was on Lens Testnet
+2. **Improper Wallet Integration**: Code was using `window.ethereum` directly instead of following [Farcaster Mini Apps documentation](https://miniapps.farcaster.xyz/docs/guides/wallets#setup-wagmi)
+3. **Missing Wagmi Setup**: No proper Wagmi configuration with Farcaster Mini App connector
+
+**Solution Applied**:
+
+1. **Installed Required Dependencies**:
+   ```bash
+   npm install @farcaster/miniapp-wagmi-connector wagmi @tanstack/react-query
+   ```
+
+2. **Updated Providers with Proper Wagmi Configuration** (`app/providers.tsx`):
+   - Added `WagmiProvider` with `farcasterMiniApp` connector
+   - Configured for Base chain as recommended
+   - Added React Query provider as required by Wagmi
+
+3. **Refactored SpendPermissionCollage Component**:
+   - **Replaced `window.ethereum` with Wagmi hooks**: `useAccount`, `useConnect`, `useSignTypedData`, `useChainId`
+   - **Added proper wallet connection flow**: Shows connect button if wallet not connected
+   - **Enhanced network detection**: Uses `useChainId()` hook for real-time chain detection
+   - **Improved error handling**: Network-specific error messages with clear instructions
+   - **Fixed type safety**: Separate objects for API calls (strings) vs signing (proper types)
+
+4. **Network Handling Strategy**:
+   - **Detection**: Uses Wagmi's `useChainId()` for real-time network detection
+   - **User Guidance**: Clear error message instructing user to switch to Base mainnet
+   - **No Auto-Switching**: Respects user control, asks them to manually switch networks
+
+5. **Updated Debug Information**:
+   - Shows connection status, wallet address, current network
+   - Real-time updates using Wagmi state
+   - Network name resolution (Base, Lens Testnet, etc.)
+
+**Technical Implementation Details**:
+
+**Providers Setup**:
+```typescript
+const config = createConfig({
+  chains: [base],
+  transports: { [base.id]: http() },
+  connectors: [farcasterMiniApp()],
+});
+```
+
+**Component Integration**:
+- `useAccount()` - wallet connection status and address
+- `useConnect()` - connect wallet functionality  
+- `useChainId()` - current network detection
+- `useSignTypedData()` - typed data signing for spend permissions
+
+**Error Handling**:
+- Network mismatch: Clear message to switch to Base mainnet
+- No connectors: Farcaster-specific guidance
+- Connection failures: Actionable error messages
+
+**User Experience Flow**:
+1. **Not Connected**: Shows "Connect Farcaster Wallet" button
+2. **Wrong Network**: Clear error message with network switch instruction  
+3. **Correct Network**: Proceed with spend permission setup
+4. **Connected & Authorized**: Enable collage generation
+
+**Files Modified**:
+- `app/providers.tsx` - Added Wagmi configuration
+- `components/spend-permissions/SpendPermissionCollage.tsx` - Complete refactor to use Wagmi
+- `next.config.js` - Added webpack fallbacks for Node.js modules
+
+**Verification**:
+- ✅ Development server starts successfully
+- ✅ Proper Farcaster Mini App integration following official documentation
+- ✅ Network detection works correctly
+- ✅ Type-safe wallet interactions
+- ✅ Clear user guidance for network switching
+
+**Next Steps**:
+The implementation now properly follows the [Farcaster Mini Apps wallet integration guide](https://miniapps.farcaster.xyz/docs/guides/wallets#setup-wagmi) and should correctly handle the network mismatch by providing clear user guidance to switch to Base mainnet. 
