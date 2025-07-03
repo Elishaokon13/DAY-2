@@ -83,19 +83,15 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
       return;
     }
 
-    const currentTime = Math.floor(Date.now() / 1000);
-    const endTime = currentTime + Number(SPEND_PERMISSION_CONFIG.period);
-    const saltValue = Math.floor(Math.random() * 1000000);
-
     const spendPermission = {
       account: accountAddress as Address,
       spender: SPENDER_ADDRESS,
       token: USDC_ADDRESS,
       allowance: SPEND_PERMISSION_CONFIG.allowance,
       period: Number(SPEND_PERMISSION_CONFIG.period),
-      start: currentTime,
-      end: endTime,
-      salt: BigInt(saltValue),
+      start: 0, // Start immediately
+      end: 281474976710655, // max uint48
+      salt: BigInt(0),
       extraData: "0x" as Hex,
     };
 
