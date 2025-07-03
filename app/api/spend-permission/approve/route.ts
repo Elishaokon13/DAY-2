@@ -39,16 +39,6 @@ function getSpenderWalletClient() {
   console.log(`Original private key length: ${spenderPrivateKey.length}`);
   console.log(`Trimmed private key length: ${formattedPrivateKey.length}`);
   console.log(`Private key starts with 0x: ${formattedPrivateKey.startsWith('0x')}`);
-  console.log(`First 10 chars: "${formattedPrivateKey.substring(0, 10)}"`);
-  console.log(`Last 10 chars: "${formattedPrivateKey.substring(formattedPrivateKey.length - 10)}"`);
-  
-  // Check for invisible characters
-  const hasInvisibleChars = formattedPrivateKey.length !== formattedPrivateKey.replace(/\s/g, '').length;
-  console.log(`Contains whitespace/invisible chars: ${hasInvisibleChars}`);
-  
-  // Remove any whitespace characters
-  formattedPrivateKey = formattedPrivateKey.replace(/\s/g, '');
-  console.log(`After removing whitespace, length: ${formattedPrivateKey.length}`);
   
   // Add 0x prefix if missing
   if (!formattedPrivateKey.startsWith('0x')) {
