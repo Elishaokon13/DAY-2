@@ -58,7 +58,7 @@ export function ShareButton({ displayName }: ShareButtonProps) {
         whileTap={{ scale: 0.98 }}
         onClick={handleCopy}
         className="relative group overflow-hidden rounded-xl bg-lime-950/30 border border-lime-700/30 hover:border-lime-400/50 hover:bg-lime-900/40 text-lime-400 py-3 px-6 font-mono tracking-wider transition-all duration-300 text-sm md:text-base flex items-center gap-2"
-      >
+        >
         {/* Gradient hover effect */}
         <div className="absolute inset-0 bg-gradient-to-r from-lime-500/10 via-transparent to-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         

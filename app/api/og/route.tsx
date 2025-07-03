@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
         height: 630,
       },
     );
-  } catch (e) {
+  } catch {
     return new Response(`Failed to generate image`, {
       status: 500,
     });
