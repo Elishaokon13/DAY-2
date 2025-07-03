@@ -122,7 +122,7 @@ export function SpendPermissionCollage({ displayName, onCollageGenerated }: Spen
           signature,
           userAddress,
           farcasterUsername: context.user.username,
-        }),
+        }, (key, value) => typeof value === 'bigint' ? value.toString() : value),
       });
 
       const result = await response.json();
