@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
-import { Address, Hex } from "viem";
+import { Hex } from "viem";
 import { Icon } from "@/components/ui/Icon";
 import { 
   spendPermissionManagerAddress, 
